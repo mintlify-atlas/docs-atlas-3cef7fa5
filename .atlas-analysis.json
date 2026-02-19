@@ -1,0 +1,193 @@
+{
+  "projectType": "cli-tool",
+  "projectName": "OpenCode",
+  "projectDescription": "Open source AI coding agent for terminal, desktop, and IDE",
+  "theme": "aspen",
+  "primaryColor": "#4A90E2",
+  "lightColor": "#6AB7FF",
+  "darkColor": "#2563EB",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "installation",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "agents",
+              "modes",
+              "tools",
+              "permissions"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "config",
+              "providers",
+              "models",
+              "keybinds",
+              "themes",
+              "formatters"
+            ]
+          },
+          {
+            "group": "Integrations",
+            "pages": [
+              "lsp",
+              "mcp-servers",
+              "github",
+              "gitlab",
+              "ide"
+            ]
+          },
+          {
+            "group": "Extensibility",
+            "pages": [
+              "plugins",
+              "custom-tools",
+              "commands",
+              "skills",
+              "rules"
+            ]
+          },
+          {
+            "group": "Interfaces",
+            "pages": [
+              "tui",
+              "web",
+              "acp"
+            ]
+          },
+          {
+            "group": "Advanced",
+            "pages": [
+              "server",
+              "network",
+              "share",
+              "windows-wsl",
+              "troubleshooting"
+            ]
+          },
+          {
+            "group": "Enterprise",
+            "pages": [
+              "enterprise",
+              "zen"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "CLI Reference",
+        "groups": [
+          {
+            "group": "Commands",
+            "pages": [
+              "cli/overview",
+              "cli/serve",
+              "cli/web",
+              "cli/attach",
+              "cli/models",
+              "cli/auth",
+              "cli/agent",
+              "cli/upgrade"
+            ]
+          },
+          {
+            "group": "In-Session Commands",
+            "pages": [
+              "cli/commands/init",
+              "cli/commands/connect",
+              "cli/commands/undo-redo",
+              "cli/commands/share",
+              "cli/commands/custom"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "SDK Reference",
+        "groups": [
+          {
+            "group": "JavaScript SDK",
+            "pages": [
+              "sdk/overview",
+              "sdk/client",
+              "sdk/configuration",
+              "sdk/types"
+            ]
+          },
+          {
+            "group": "Plugin API",
+            "pages": [
+              "sdk/plugin-api",
+              "sdk/plugin-tools",
+              "sdk/plugin-examples"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Community",
+        "groups": [
+          {
+            "group": "Resources",
+            "pages": [
+              "community/ecosystem",
+              "community/contributing",
+              "community/faq"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "AI-powered code generation and editing",
+    "Multi-agent system with Build and Plan modes",
+    "Language Server Protocol (LSP) integration",
+    "Model Context Protocol (MCP) support",
+    "Extensible plugin and tool system",
+    "Terminal UI, Desktop app, and IDE extensions",
+    "Headless HTTP server with OpenAPI spec",
+    "Multi-provider LLM support (Claude, OpenAI, local models)",
+    "Real-time collaboration with session sharing",
+    "Custom commands and skills",
+    "GitHub/GitLab integration"
+  ],
+  "publicApiSurface": [
+    "opencode [directory]",
+    "opencode serve",
+    "opencode web",
+    "opencode attach",
+    "opencode models",
+    "opencode auth",
+    "opencode agent",
+    "opencode upgrade",
+    "/init",
+    "/connect",
+    "/undo",
+    "/redo",
+    "/share",
+    "createOpencode()",
+    "createOpencodeClient()",
+    "defineTool()",
+    "definePlugin()",
+    "GET /global/health",
+    "GET /global/event",
+    "GET /project/list",
+    "POST /project/create",
+    "GET /session/list",
+    "POST /session/create",
+    "POST /session/:id/message"
+  ]
+}
