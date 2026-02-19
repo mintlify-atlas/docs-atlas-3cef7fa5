@@ -1,0 +1,213 @@
+---
+title: Quickstart
+description: Get up and running with OpenCode in 5 minutes
+---
+
+Get OpenCode running on your first project in under 5 minutes.
+
+## Install OpenCode
+
+<Steps>
+  <Step title="Install via script">
+    The fastest way to install OpenCode:
+
+    ```bash
+    curl -fsSL https://opencode.ai/install | bash
+    ```
+
+    Or use your preferred package manager:
+
+    <CodeGroup>
+    ```bash npm
+    npm install -g opencode-ai
+    ```
+    ```bash brew
+    brew install anomalyco/tap/opencode
+    ```
+    ```bash chocolatey
+    choco install opencode
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Verify installation">
+    Check that OpenCode is installed:
+
+    ```bash
+    opencode --version
+    ```
+  </Step>
+</Steps>
+
+<Tip>
+For Windows users, we recommend using [WSL](/windows-wsl) for the best experience.
+</Tip>
+
+---
+
+## Configure a Provider
+
+OpenCode works with any LLM provider. We recommend starting with OpenCode Zen for a curated experience.
+
+<Steps>
+  <Step title="Start OpenCode">
+    Navigate to any directory and launch OpenCode:
+
+    ```bash
+    cd ~/my-project
+    opencode
+    ```
+  </Step>
+
+  <Step title="Connect to a provider">
+    In the OpenCode interface, run:
+
+    ```
+    /connect
+    ```
+
+    Select **opencode** (Zen) from the provider list.
+  </Step>
+
+  <Step title="Get your API key">
+    Visit [opencode.ai/auth](https://opencode.ai/auth), sign in, and copy your API key.
+  </Step>
+
+  <Step title="Paste the API key">
+    Return to OpenCode and paste your API key when prompted.
+
+    ```
+    ┌ API key
+    │ [paste your key]
+    └ enter
+    ```
+  </Step>
+</Steps>
+
+<Note>
+You can also configure other providers like Anthropic, OpenAI, or local models. See [Providers](/providers) for more options.
+</Note>
+
+---
+
+## Initialize Your Project
+
+Help OpenCode understand your codebase by initializing it:
+
+```
+/init
+```
+
+This command:
+- Analyzes your project structure
+- Identifies coding patterns
+- Creates an `AGENTS.md` file with project context
+
+<Tip>
+Commit the generated `AGENTS.md` file to version control so your team benefits from the same context.
+</Tip>
+
+---
+
+## Start Coding
+
+You're ready! Here are some things you can try:
+
+### Ask Questions
+
+Ask OpenCode about your codebase:
+
+```
+How does authentication work in this project?
+```
+
+Use `@` to reference specific files:
+
+```
+Explain the logic in @src/auth/login.ts
+```
+
+### Make Changes
+
+Request code modifications:
+
+```
+Add error handling to the login function
+```
+
+Switch to **Plan mode** (press `Tab`) to review changes before applying them.
+
+### Run Commands
+
+Execute bash commands with `!`:
+
+```
+!npm test
+```
+
+Or use slash commands:
+
+```
+/undo    # Revert the last change
+/redo    # Reapply a reverted change
+/share   # Share the current conversation
+```
+
+---
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Tab` | Switch between Build and Plan agents |
+| `@` | Reference a file |
+| `!` | Run a bash command |
+| `/` | Execute a slash command |
+| `Ctrl+C` | Cancel current operation |
+
+See [Keybinds](/keybinds) for the complete list.
+
+---
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Core Concepts" icon="brain" href="/agents">
+    Learn about agents, modes, and tools
+  </Card>
+  <Card title="Configuration" icon="gear" href="/config">
+    Customize OpenCode for your workflow
+  </Card>
+  <Card title="CLI Reference" icon="terminal" href="/cli/overview">
+    Explore all CLI commands
+  </Card>
+  <Card title="Integrations" icon="plug" href="/lsp">
+    Connect LSP servers, MCP, GitHub, and more
+  </Card>
+</CardGroup>
+
+---
+
+## Getting Help
+
+<AccordionGroup>
+  <Accordion title="OpenCode won't start">
+    Check the installation with `opencode --version`. If it's not found, ensure the installation directory is in your PATH.
+
+    See [Troubleshooting](/troubleshooting) for common issues.
+  </Accordion>
+
+  <Accordion title="Can't connect to provider">
+    Verify your API key is valid and you have credits available. Run `/connect` again to reconfigure.
+
+    Check [Providers](/providers) for provider-specific setup.
+  </Accordion>
+
+  <Accordion title="Changes aren't working as expected">
+    Use `/undo` to revert changes. Switch to Plan mode (`Tab`) to review suggestions before applying them.
+
+    Learn more about [Modes](/modes) and [Permissions](/permissions).
+  </Accordion>
+</AccordionGroup>
+
+Need more help? Join our [Discord community](https://opencode.ai/discord) or check the [FAQ](/community/faq).
