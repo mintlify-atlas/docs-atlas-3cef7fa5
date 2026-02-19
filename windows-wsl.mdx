@@ -1,0 +1,681 @@
+---
+title: 'Windows (WSL)'
+description: 'Optimal OpenCode setup for Windows using Windows Subsystem for Linux'
+icon: 'windows'
+---
+
+While OpenCode can run natively on Windows, **Windows Subsystem for Linux (WSL)** provides the best experience with superior performance, compatibility, and stability.
+
+<Note>
+**Why WSL is recommended:**
+- 10-20x faster file I/O operations
+- Full POSIX compatibility for shell commands
+- Seamless integration with Linux development tools
+- Better terminal emulator support
+- Native Git performance
+</Note>
+
+## Quick Start
+
+<Steps>
+  <Step title="Install WSL">
+    Open PowerShell as Administrator and run:
+    
+    ```powershell
+    wsl --install
+    ```
+    
+    This installs:
+    - WSL 2 (latest version)
+    - Ubuntu Linux (default distribution)
+    - Required kernel components
+    
+    Restart your computer when prompted.
+  </Step>
+  
+  <Step title="Launch WSL">
+    After restart, open "Ubuntu" from the Start menu.
+    
+    Create a UNIX username and password (does not need to match Windows credentials).
+  </Step>
+  
+  <Step title="Install OpenCode">
+    In the WSL terminal:
+    
+    ```bash
+    curl -fsSL https://opencode.ai/install | bash
+    ```
+    
+    Or use npm/pnpm/brew:
+    
+    ```bash
+    # npm
+    npm install -g opencode-cli
+    
+    # pnpm
+    pnpm add -g opencode-cli
+    
+    # Homebrew
+    brew install opencode
+    ```
+  </Step>
+  
+  <Step title="Run OpenCode">
+    Navigate to your project and start:
+    
+    ```bash
+    cd /mnt/c/Users/YourName/projects/my-app
+    opencode
+    ```
+  </Step>
+</Steps>
+
+## WSL Installation Details
+
+### Prerequisites
+
+- **Windows 10 version 2004+** (Build 19041+) or **Windows 11**
+- **Virtualization** enabled in BIOS/UEFI
+- **Administrator access** for initial setup
+
+### Manual Installation
+
+If `wsl --install` doesn't work:
+
+<Steps>
+  <Step title="Enable WSL feature">
+    ```powershell
+    dism.exe /online /enable-feature /featurename:Microsoft-Windows-Subsystem-Linux /all /norestart
+    ```
+  </Step>
+  
+  <Step title="Enable Virtual Machine Platform">
+    ```powershell
+    dism.exe /online /enable-feature /featurename:VirtualMachinePlatform /all /norestart
+    ```
+  </Step>
+  
+  <Step title="Restart Windows">
+    Reboot is required for features to activate.
+  </Step>
+  
+  <Step title="Download WSL kernel update">
+    [WSL2 Kernel Update (x64)](https://aka.ms/wsl2kernel)
+    
+    Install the downloaded MSI package.
+  </Step>
+  
+  <Step title="Set WSL 2 as default">
+    ```powershell
+    wsl --set-default-version 2
+    ```
+  </Step>
+  
+  <Step title="Install Linux distribution">
+    Open Microsoft Store → Search "Ubuntu" → Install
+    
+    Or via command line:
+    ```powershell
+    wsl --install -d Ubuntu
+    ```
+  </Step>
+</Steps>
+
+### Verify Installation
+
+```powershell
+# Check WSL version
+wsl --list --verbose
+
+# Expected output:
+#   NAME      STATE           VERSION
+# * Ubuntu    Running         2
+```
+
+<Note>
+Ensure `VERSION` is `2`. If it shows `1`, upgrade:
+
+```powershell
+wsl --set-version Ubuntu 2
+```
+</Note>
+
+## Accessing Windows Files
+
+WSL mounts Windows drives under `/mnt/`:
+
+<CodeGroup>
+```bash File Paths
+# Windows C:\ drive
+/mnt/c/
+
+# Windows D:\ drive
+/mnt/d/
+
+# Example: Windows Desktop
+/mnt/c/Users/YourName/Desktop/
+
+# Example: Documents folder
+/mnt/c/Users/YourName/Documents/
+```
+
+```bash Navigate to Windows Project
+cd /mnt/c/Users/YourName/projects/my-app
+opencode
+```
+</CodeGroup>
+
+### Performance Considerations
+
+<Warning>
+**Cross-filesystem operations are slow.**
+
+Accessing Windows files from WSL (`/mnt/c/`) is significantly slower than native WSL filesystem (`~/`).
+
+- Windows → WSL: ~30% slower
+- WSL → Windows: ~60% slower
+</Warning>
+
+<Accordion title="Performance Optimization">
+  **For best performance, store projects in the WSL filesystem:**
+  
+  ```bash
+  # Clone repos into WSL home directory
+  cd ~
+  mkdir -p ~/projects
+  cd ~/projects
+  git clone https://github.com/user/repo.git
+  cd repo
+  opencode
+  ```
+  
+  **Benchmark comparison (reading 1000 files):**
+  - Native WSL (`~/projects/`): ~0.8 seconds
+  - Windows mount (`/mnt/c/projects/`): ~3.2 seconds
+  
+  <Note>
+  VS Code Remote-WSL extension can edit files in `~/projects/` seamlessly.
+  </Note>
+</Accordion>
+
+## Architecture Patterns
+
+### Pattern 1: TUI in WSL (Recommended)
+
+**Best for:** Developers who prefer terminal interfaces.
+
+```bash
+# In WSL terminal
+cd ~/projects/my-app
+opencode
+```
+
+✅ Pros:
+- Best performance
+- Full feature support
+- Native terminal experience
+
+❌ Cons:
+- Terminal-only (no GUI)
+
+### Pattern 2: Web Client + WSL Server
+
+**Best for:** Developers who prefer browser-based UIs.
+
+<Steps>
+  <Step title="Start web server in WSL">
+    ```bash
+    opencode web --hostname 0.0.0.0 --port 3000
+    ```
+  </Step>
+  
+  <Step title="Open in Windows browser">
+    Navigate to `http://localhost:3000`
+  </Step>
+</Steps>
+
+✅ Pros:
+- Modern web UI
+- Server runs in performant WSL environment
+- Access from any Windows browser
+
+❌ Cons:
+- Requires browser
+- Slightly higher resource usage
+
+<Note>
+WSL automatically forwards `localhost` ports to Windows. No additional configuration needed.
+</Note>
+
+### Pattern 3: Desktop App + WSL Server
+
+**Best for:** Users who want native desktop app with WSL performance.
+
+<Steps>
+  <Step title="Start server in WSL with external access">
+    ```bash
+    export OPENCODE_SERVER_PASSWORD="your-secure-password"
+    opencode serve --hostname 0.0.0.0 --port 4096
+    ```
+    
+    <Warning>
+    Always set `OPENCODE_SERVER_PASSWORD` when using `--hostname 0.0.0.0`.
+    </Warning>
+  </Step>
+  
+  <Step title="Install OpenCode Desktop on Windows">
+    Download from [opencode.ai/download](https://opencode.ai/download)
+  </Step>
+  
+  <Step title="Connect Desktop app to WSL server">
+    In OpenCode Desktop:
+    1. Click server name in bottom-right
+    2. Enter URL: `http://localhost:4096`
+    3. Enter credentials (username: `opencode`, password: your password)
+  </Step>
+</Steps>
+
+✅ Pros:
+- Native desktop app experience
+- Server performance benefits from WSL
+- System notifications work
+
+❌ Cons:
+- Requires password authentication
+- More complex setup
+
+<Accordion title="If localhost doesn't work">
+  Get WSL's IP address:
+  
+  ```bash
+  # In WSL
+  hostname -I
+  # Output: 172.20.10.5
+  ```
+  
+  Connect Desktop app to `http://172.20.10.5:4096` instead of `localhost:4096`.
+</Accordion>
+
+## File Editing
+
+### VS Code Remote-WSL (Recommended)
+
+Edit files in WSL filesystem from Windows:
+
+<Steps>
+  <Step title="Install VS Code on Windows">
+    Download from [code.visualstudio.com](https://code.visualstudio.com/)
+  </Step>
+  
+  <Step title="Install Remote-WSL extension">
+    In VS Code:
+    1. Open Extensions (`Ctrl+Shift+X`)
+    2. Search "Remote - WSL"
+    3. Click Install
+  </Step>
+  
+  <Step title="Open project from WSL">
+    ```bash
+    # In WSL terminal
+    cd ~/projects/my-app
+    code .
+    ```
+    
+    VS Code opens on Windows, editing files in WSL.
+  </Step>
+  
+  <Step title="Run OpenCode in integrated terminal">
+    In VS Code's terminal (`Ctrl+` `):
+    ```bash
+    opencode
+    ```
+  </Step>
+</Steps>
+
+✅ Benefits:
+- Edit in GUI, run in WSL
+- Full IntelliSense and extensions
+- Git integration
+- Side-by-side with OpenCode TUI
+
+### Windows File Explorer
+
+Access WSL files from Windows:
+
+```
+\\wsl$\Ubuntu\home\yourusername\projects
+```
+
+1. Open File Explorer
+2. Type `\\wsl$` in address bar
+3. Navigate to your files
+
+<Warning>
+Editing large files via `\\wsl$` can be slow. Use VS Code Remote-WSL instead.
+</Warning>
+
+## Git Configuration
+
+### Separate Git Configs
+
+WSL and Windows Git are separate. Configure Git in WSL:
+
+```bash
+# In WSL terminal
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+
+# Optional: Use Windows credential manager
+git config --global credential.helper "/mnt/c/Program\\ Files/Git/mingw64/bin/git-credential-manager.exe"
+```
+
+### SSH Keys
+
+Generate SSH keys in WSL:
+
+```bash
+ssh-keygen -t ed25519 -C "you@example.com"
+cat ~/.ssh/id_ed25519.pub
+# Copy output and add to GitHub/GitLab
+```
+
+<Note>
+WSL SSH keys are separate from Windows. You'll need to add the new public key to GitHub/GitLab.
+</Note>
+
+## Terminal Recommendations
+
+### Windows Terminal (Best)
+
+Modern terminal with tabs, GPU acceleration, and WSL integration.
+
+**Install:**
+- Microsoft Store: "Windows Terminal"
+- Or via `winget`:
+  ```powershell
+  winget install Microsoft.WindowsTerminal
+  ```
+
+**Configure:**
+1. Open Windows Terminal
+2. Settings → Startup → Default profile: Ubuntu
+3. Settings → Ubuntu → Appearance → Font: "Cascadia Code NF"
+
+### Alternative: Termius, iTerm2-like
+
+For users wanting more features:
+- [Tabby](https://tabby.sh/) - Cross-platform, highly customizable
+- [Fluent Terminal](https://github.com/felixse/FluentTerminal) - Modern UWP terminal
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="WSL won't start">
+    **Error:** `The virtual machine could not be started...`
+    
+    **Fix:**
+    1. Enable Virtualization in BIOS:
+       - Restart → Enter BIOS (F2/DEL/F12)
+       - Find "Virtualization Technology" or "VT-x/AMD-V"
+       - Enable → Save → Reboot
+    
+    2. Ensure Windows features are enabled:
+       ```powershell
+       # Run as Administrator
+       Enable-WindowsOptionalFeature -Online -FeatureName VirtualMachinePlatform
+       Enable-WindowsOptionalFeature -Online -FeatureName Microsoft-Windows-Subsystem-Linux
+       ```
+  </Accordion>
+  
+  <Accordion title="Slow file operations">
+    **Symptoms:** OpenCode takes minutes to start, file edits lag.
+    
+    **Cause:** Project is on Windows filesystem (`/mnt/c/`).
+    
+    **Fix:** Move project to WSL:
+    ```bash
+    # Copy project to WSL
+    cp -r /mnt/c/Users/YourName/projects/my-app ~/projects/
+    cd ~/projects/my-app
+    opencode  # Much faster!
+    ```
+  </Accordion>
+  
+  <Accordion title="Cannot access WSL files from Windows">
+    **Symptoms:** `\\wsl$` path not found in File Explorer.
+    
+    **Fix:**
+    1. Ensure WSL is running:
+       ```powershell
+       wsl --list --verbose
+       # Should show "Running"
+       ```
+    
+    2. Start WSL if stopped:
+       ```powershell
+       wsl
+       ```
+    
+    3. Retry accessing `\\wsl$\Ubuntu`
+  </Accordion>
+  
+  <Accordion title="Git credentials not working">
+    **Symptoms:** Git push asks for password every time.
+    
+    **Fix:** Use Windows credential manager from WSL:
+    ```bash
+    git config --global credential.helper "/mnt/c/Program\\ Files/Git/mingw64/bin/git-credential-manager.exe"
+    ```
+    
+    Or set up SSH keys (see Git Configuration section).
+  </Accordion>
+  
+  <Accordion title="OpenCode can't find Node/Python/etc.">
+    **Cause:** Tool installed in Windows, not WSL.
+    
+    **Fix:** Install tools in WSL:
+    ```bash
+    # Node.js via nvm
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
+    source ~/.bashrc
+    nvm install --lts
+    
+    # Python
+    sudo apt update
+    sudo apt install python3 python3-pip
+    
+    # Docker
+    # Use Docker Desktop for Windows with WSL 2 backend
+    ```
+  </Accordion>
+  
+  <Accordion title="Port already in use">
+    **Symptoms:** `opencode serve` fails with "port 4096 already in use".
+    
+    **Cause:** Windows process using the port.
+    
+    **Fix:**
+    ```powershell
+    # In PowerShell (as Administrator)
+    netstat -ano | findstr :4096
+    # Note the PID in last column
+    
+    taskkill /PID <PID> /F
+    ```
+    
+    Or use a different port:
+    ```bash
+    opencode serve --port 4097
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Advanced: Docker in WSL
+
+### Docker Desktop Integration
+
+<Steps>
+  <Step title="Install Docker Desktop for Windows">
+    Download from [docker.com](https://www.docker.com/products/docker-desktop)
+  </Step>
+  
+  <Step title="Enable WSL 2 backend">
+    Docker Desktop → Settings → General → "Use the WSL 2 based engine" ✓
+  </Step>
+  
+  <Step title="Enable Ubuntu integration">
+    Docker Desktop → Settings → Resources → WSL Integration → Enable Ubuntu ✓
+  </Step>
+  
+  <Step title="Verify in WSL">
+    ```bash
+    docker --version
+    docker run hello-world
+    ```
+  </Step>
+</Steps>
+
+Now OpenCode can use Docker for:
+- Running MCP servers in containers
+- Containerized development environments
+- Building and testing Docker images
+
+## Performance Tuning
+
+### Increase WSL Memory Limit
+
+By default, WSL uses 50% of total RAM. For large projects:
+
+<Steps>
+  <Step title="Create .wslconfig file">
+    ```powershell
+    # In PowerShell
+    notepad $env:USERPROFILE\.wslconfig
+    ```
+  </Step>
+  
+  <Step title="Add configuration">
+    ```ini
+    [wsl2]
+    memory=8GB        # Increase for large projects
+    processors=4      # Match CPU cores
+    swap=2GB
+    localhostForwarding=true
+    ```
+  </Step>
+  
+  <Step title="Restart WSL">
+    ```powershell
+    wsl --shutdown
+    wsl
+    ```
+  </Step>
+</Steps>
+
+### Disable Windows Defender for WSL
+
+Windows Defender can slow down file operations:
+
+<Steps>
+  <Step title="Open Windows Security">
+    Start → "Windows Security" → Virus & threat protection
+  </Step>
+  
+  <Step title="Add exclusions">
+    Manage settings → Exclusions → Add or remove exclusions
+    
+    Add:
+    - `%USERPROFILE%\AppData\Local\Packages\CanonicalGroupLimited.*`
+    - `\\wsl$\Ubuntu\home\<yourusername>\projects`
+  </Step>
+</Steps>
+
+<Warning>
+Only exclude trusted directories. Do not disable Defender entirely.
+</Warning>
+
+## Migration: Windows → WSL
+
+Moving existing projects to WSL:
+
+<Steps>
+  <Step title="Identify project locations">
+    ```powershell
+    # In PowerShell
+    dir C:\Users\YourName\projects
+    ```
+  </Step>
+  
+  <Step title="Copy to WSL">
+    ```bash
+    # In WSL
+    mkdir -p ~/projects
+    cp -r /mnt/c/Users/YourName/projects/* ~/projects/
+    ```
+  </Step>
+  
+  <Step title="Update Git remotes (if needed)">
+    ```bash
+    cd ~/projects/my-app
+    git remote -v  # Verify URLs are correct
+    ```
+  </Step>
+  
+  <Step title="Reinstall dependencies">
+    ```bash
+    # For Node projects
+    rm -rf node_modules package-lock.json
+    npm install
+    
+    # For Python projects
+    rm -rf venv/
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install -r requirements.txt
+    ```
+  </Step>
+</Steps>
+
+<Note>
+Leave originals on Windows until you've verified everything works in WSL.
+</Note>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Store projects in WSL" icon="folder">
+    Use `~/projects/` instead of `/mnt/c/` for 3-4x faster performance.
+  </Card>
+  
+  <Card title="Use Windows Terminal" icon="terminal">
+    Better performance, tabs, and customization than Command Prompt or PowerShell.
+  </Card>
+  
+  <Card title="VS Code Remote-WSL" icon="code">
+    Edit files seamlessly while benefiting from WSL's speed.
+  </Card>
+  
+  <Card title="Docker Desktop WSL 2 backend" icon="docker">
+    Native container performance with Windows UI.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Server Configuration" icon="server" href="/server">
+    Advanced server setup for WSL environments.
+  </Card>
+  
+  <Card title="Network Setup" icon="network-wired" href="/network">
+    Configure proxies and certificates in WSL.
+  </Card>
+  
+  <Card title="Troubleshooting" icon="wrench" href="/troubleshooting">
+    Diagnose and fix WSL-specific issues.
+  </Card>
+  
+  <Card title="VS Code Integration" icon="code" href="/ide">
+    Connect OpenCode with VS Code in WSL.
+  </Card>
+</CardGroup>

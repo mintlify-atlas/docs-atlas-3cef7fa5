@@ -1,0 +1,166 @@
+---
+title: "CLI Overview"
+description: "Complete reference for OpenCode command-line interface"
+---
+
+The OpenCode CLI provides both interactive and non-interactive modes for working with AI-powered coding assistance.
+
+## Getting Started
+
+By default, OpenCode starts the [TUI](/tui) when run without arguments:
+
+```bash
+opencode
+```
+
+You can also run commands programmatically:
+
+```bash
+opencode run "Explain how closures work in JavaScript"
+```
+
+## Available Commands
+
+<CardGroup cols={2}>
+  <Card title="serve" icon="server" href="/cli/serve">
+    Start a headless OpenCode server for API access
+  </Card>
+  <Card title="web" icon="globe" href="/cli/web">
+    Start server with web interface
+  </Card>
+  <Card title="attach" icon="link" href="/cli/attach">
+    Attach terminal to running backend server
+  </Card>
+  <Card title="models" icon="microchip" href="/cli/models">
+    List all available models from providers
+  </Card>
+  <Card title="auth" icon="key" href="/cli/auth">
+    Manage provider credentials and login
+  </Card>
+  <Card title="agent" icon="robot" href="/cli/agent">
+    Manage custom agents
+  </Card>
+  <Card title="upgrade" icon="arrow-up" href="/cli/upgrade">
+    Update to latest or specific version
+  </Card>
+</CardGroup>
+
+## TUI Mode
+
+Start the OpenCode terminal user interface:
+
+```bash
+opencode [project]
+```
+
+### Options
+
+<ParamField path="--continue" type="flag">
+  Continue the last session. Short form: `-c`
+</ParamField>
+
+<ParamField path="--session" type="string">
+  Session ID to continue. Short form: `-s`
+</ParamField>
+
+<ParamField path="--fork" type="flag">
+  Fork the session when continuing (use with `--continue` or `--session`)
+</ParamField>
+
+<ParamField path="--prompt" type="string">
+  Initial prompt to use
+</ParamField>
+
+<ParamField path="--model" type="string">
+  Model to use in the form of `provider/model`. Short form: `-m`
+</ParamField>
+
+<ParamField path="--agent" type="string">
+  Agent to use
+</ParamField>
+
+<ParamField path="--port" type="number">
+  Port to listen on
+</ParamField>
+
+<ParamField path="--hostname" type="string">
+  Hostname to listen on
+</ParamField>
+
+### Examples
+
+```bash
+# Start in current directory
+opencode
+
+# Continue last session
+opencode --continue
+
+# Use specific model
+opencode --model anthropic/claude-4.5-sonnet
+
+# Fork previous session
+opencode --session abc123 --fork
+```
+
+## Run Mode
+
+Run OpenCode non-interactively with a direct message:
+
+```bash
+opencode run [message..]
+```
+
+See the full [run command documentation](/cli/commands/init) for details.
+
+## Global Flags
+
+These flags work with any command:
+
+<ParamField path="--help" type="flag">
+  Display help information. Short form: `-h`
+</ParamField>
+
+<ParamField path="--version" type="flag">
+  Print version number. Short form: `-v`
+</ParamField>
+
+<ParamField path="--print-logs" type="flag">
+  Print logs to stderr
+</ParamField>
+
+<ParamField path="--log-level" type="string">
+  Set log level: `DEBUG`, `INFO`, `WARN`, or `ERROR`
+</ParamField>
+
+## Environment Variables
+
+OpenCode can be configured using environment variables:
+
+| Variable | Type | Description |
+| --- | --- | --- |
+| `OPENCODE_AUTO_SHARE` | boolean | Automatically share sessions |
+| `OPENCODE_CONFIG` | string | Path to config file |
+| `OPENCODE_CONFIG_DIR` | string | Path to config directory |
+| `OPENCODE_CONFIG_CONTENT` | string | Inline JSON config content |
+| `OPENCODE_DISABLE_AUTOUPDATE` | boolean | Disable automatic update checks |
+| `OPENCODE_DISABLE_PRUNE` | boolean | Disable pruning of old data |
+| `OPENCODE_DISABLE_TERMINAL_TITLE` | boolean | Disable automatic terminal title updates |
+| `OPENCODE_SERVER_PASSWORD` | string | Enable basic auth for serve/web |
+| `OPENCODE_SERVER_USERNAME` | string | Override basic auth username (default: `opencode`) |
+| `OPENCODE_CLIENT` | string | Client identifier (defaults to `cli`) |
+
+<Note>
+  For a complete list of environment variables including experimental features, see the [source documentation](https://github.com/anomalyco/opencode).
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="In-Session Commands" icon="terminal" href="/cli/commands/init">
+    Learn about commands you can use during a session
+  </Card>
+  <Card title="Configuration" icon="gear" href="/config">
+    Customize OpenCode to your needs
+  </Card>
+</CardGroup>

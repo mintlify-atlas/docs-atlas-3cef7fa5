@@ -1,0 +1,548 @@
+---
+title: Custom Tools
+description: Create tools the LLM can call in opencode.
+---
+
+Custom tools are functions you create that the LLM can call during conversations. They work alongside opencode's [built-in tools](https://opencode.ai/tools) like `read`, `write`, and `bash`.
+
+---
+
+## Creating a tool
+
+Tools are defined as **TypeScript** or **JavaScript** files. However, the tool definition can invoke scripts written in **any language** — TypeScript or JavaScript is only used for the tool definition itself.
+
+### Location
+
+They can be defined:
+
+- Locally by placing them in the `.opencode/tools/` directory of your project.
+- Or globally, by placing them in `~/.config/opencode/tools/`.
+
+### Structure
+
+The easiest way to create tools is using the `tool()` helper which provides type-safety and validation.
+
+```ts title=".opencode/tools/database.ts" {1}
+import { tool } from "@opencode-ai/plugin"
+
+export default tool({
+  description: "Query the project database",
+  args: {
+    query: tool.schema.string().describe("SQL query to execute"),
+  },
+  async execute(args) {
+    // Your database logic here
+    return `Executed query: ${args.query}`
+  },
+})
+```
+
+The **filename** becomes the **tool name**. The above creates a `database` tool.
+
+#### Multiple tools per file
+
+You can also export multiple tools from a single file. Each export becomes **a separate tool** with the name **`<filename>_<exportname>`**:
+
+```ts title=".opencode/tools/math.ts"
+import { tool } from "@opencode-ai/plugin"
+
+export const add = tool({
+  description: "Add two numbers",
+  args: {
+    a: tool.schema.number().describe("First number"),
+    b: tool.schema.number().describe("Second number"),
+  },
+  async execute(args) {
+    return args.a + args.b
+  },
+})
+
+export const multiply = tool({
+  description: "Multiply two numbers",
+  args: {
+    a: tool.schema.number().describe("First number"),
+    b: tool.schema.number().describe("Second number"),
+  },
+  async execute(args) {
+    return args.a * args.b
+  },
+})
+```
+
+This creates two tools: `math_add` and `math_multiply`.
+
+---
+
+## Tool API
+
+### Tool definition
+
+The `tool()` function accepts an object with the following properties:
+
+```ts
+import { tool } from "@opencode-ai/plugin"
+
+export default tool({
+  description: string,
+  args: ZodRawShape,
+  async execute(args, context) {
+    // Implementation
+    return string
+  },
+})
+```
+
+- **`description`** (required): A clear description of what the tool does. The LLM uses this to decide when to call your tool.
+- **`args`** (required): A Zod schema object defining the tool's parameters. Use `tool.schema` (which is Zod) to define types.
+- **`execute`** (required): An async function that implements the tool's logic. Must return a string that will be shown to the LLM.
+
+### Arguments
+
+You can use `tool.schema`, which is just [Zod](https://zod.dev), to define argument types.
+
+```ts "tool.schema"
+args: {
+  query: tool.schema.string().describe("SQL query to execute")
+}
+```
+
+You can also import [Zod](https://zod.dev) directly and return a plain object:
+
+```ts {6}
+import { z } from "zod"
+
+export default {
+  description: "Tool description",
+  args: {
+    param: z.string().describe("Parameter description"),
+  },
+  async execute(args, context) {
+    // Tool implementation
+    return "result"
+  },
+}
+```
+
+#### Available schema types
+
+Since `tool.schema` is Zod, you have access to all Zod types:
+
+```ts
+tool.schema.string()         // String
+tool.schema.number()         // Number
+tool.schema.boolean()        // Boolean
+tool.schema.array(z.string()) // Array of strings
+tool.schema.object({...})    // Nested object
+tool.schema.enum([...])      // Enum
+tool.schema.optional()       // Optional field
+tool.schema.default(value)   // Default value
+```
+
+Always add `.describe()` to help the LLM understand what each parameter is for:
+
+```ts
+args: {
+  name: tool.schema.string().describe("The user's name"),
+  age: tool.schema.number().optional().describe("The user's age (optional)"),
+  role: tool.schema.enum(["admin", "user"]).describe("The user's role"),
+}
+```
+
+### Context
+
+Tools receive context about the current session:
+
+```ts title=".opencode/tools/project.ts" {8}
+import { tool } from "@opencode-ai/plugin"
+
+export default tool({
+  description: "Get project information",
+  args: {},
+  async execute(args, context) {
+    // Access context information
+    const { agent, sessionID, messageID, directory, worktree } = context
+    return `Agent: ${agent}, Session: ${sessionID}, Message: ${messageID}, Directory: ${directory}, Worktree: ${worktree}`
+  },
+})
+```
+
+#### Context properties
+
+```ts
+type ToolContext = {
+  sessionID: string        // Current session ID
+  messageID: string        // Current message ID
+  agent: string            // Current agent name
+  directory: string        // Current working directory
+  worktree: string         // Git worktree root
+  abort: AbortSignal       // Signal to detect cancellation
+  metadata(input: {        // Update tool execution metadata
+    title?: string
+    metadata?: Record<string, any>
+  }): void
+  ask(input: {             // Request permissions during execution
+    permission: string
+    patterns: string[]
+    always: string[]
+    metadata: Record<string, any>
+  }): Promise<void>
+}
+```
+
+- **`directory`**: Use this instead of `process.cwd()` when resolving relative paths
+- **`worktree`**: Useful for generating stable relative paths with `path.relative(worktree, absPath)`
+- **`abort`**: Check `abort.aborted` to detect if the user cancelled the operation
+- **`metadata()`**: Update the tool's title or add custom metadata shown in the UI
+- **`ask()`**: Request user permission during tool execution
+
+#### Using metadata
+
+```ts
+import { tool } from "@opencode-ai/plugin"
+
+export default tool({
+  description: "Process large dataset",
+  args: {
+    path: tool.schema.string(),
+  },
+  async execute(args, context) {
+    context.metadata({ title: "Processing dataset..." })
+    
+    // Long-running operation
+    const result = await processData(args.path)
+    
+    context.metadata({ 
+      title: "Dataset processed",
+      metadata: { rowCount: result.rows }
+    })
+    
+    return `Processed ${result.rows} rows`
+  },
+})
+```
+
+#### Handling cancellation
+
+```ts
+import { tool } from "@opencode-ai/plugin"
+
+export default tool({
+  description: "Long running task",
+  args: {},
+  async execute(args, context) {
+    for (let i = 0; i < 1000; i++) {
+      if (context.abort.aborted) {
+        return "Task was cancelled"
+      }
+      await doWork(i)
+    }
+    return "Task completed"
+  },
+})
+```
+
+---
+
+## Examples
+
+### Write a tool in Python
+
+You can write your tools in any language you want. Here's an example that adds two numbers using Python.
+
+First, create the tool as a Python script:
+
+```python title=".opencode/tools/add.py"
+import sys
+
+a = int(sys.argv[1])
+b = int(sys.argv[2])
+print(a + b)
+```
+
+Then create the tool definition that invokes it:
+
+```ts title=".opencode/tools/python-add.ts" {10}
+import { tool } from "@opencode-ai/plugin"
+import path from "path"
+
+export default tool({
+  description: "Add two numbers using Python",
+  args: {
+    a: tool.schema.number().describe("First number"),
+    b: tool.schema.number().describe("Second number"),
+  },
+  async execute(args, context) {
+    const script = path.join(context.worktree, ".opencode/tools/add.py")
+    const result = await Bun.$`python3 ${script} ${args.a} ${args.b}`.text()
+    return result.trim()
+  },
+})
+```
+
+Here we are using the [`Bun.$`](https://bun.com/docs/runtime/shell) utility to run the Python script.
+
+### Database query tool
+
+Create a tool that executes SQL queries:
+
+```ts title=".opencode/tools/db-query.ts"
+import { tool } from "@opencode-ai/plugin"
+import { Database } from "bun:sqlite"
+import path from "path"
+
+export default tool({
+  description: "Execute SQL queries on the project database",
+  args: {
+    query: tool.schema.string().describe("SQL query to execute"),
+  },
+  async execute(args, context) {
+    const dbPath = path.join(context.worktree, "data.db")
+    const db = new Database(dbPath, { readonly: true })
+    
+    try {
+      const results = db.query(args.query).all()
+      return JSON.stringify(results, null, 2)
+    } catch (error) {
+      return `Error executing query: ${error.message}`
+    } finally {
+      db.close()
+    }
+  },
+})
+```
+
+### API client tool
+
+Create a tool that calls an external API:
+
+```ts title=".opencode/tools/github-search.ts"
+import { tool } from "@opencode-ai/plugin"
+
+export default tool({
+  description: "Search GitHub repositories",
+  args: {
+    query: tool.schema.string().describe("Search query"),
+    limit: tool.schema.number().default(5).describe("Number of results"),
+  },
+  async execute(args, context) {
+    context.metadata({ title: `Searching GitHub for "${args.query}"...` })
+    
+    const response = await fetch(
+      `https://api.github.com/search/repositories?q=${encodeURIComponent(args.query)}&per_page=${args.limit}`
+    )
+    
+    if (!response.ok) {
+      return `GitHub API error: ${response.status} ${response.statusText}`
+    }
+    
+    const data = await response.json()
+    const repos = data.items.map((repo: any) => ({
+      name: repo.full_name,
+      description: repo.description,
+      stars: repo.stargazers_count,
+      url: repo.html_url,
+    }))
+    
+    context.metadata({ 
+      title: `Found ${data.total_count} repositories`,
+      metadata: { totalCount: data.total_count }
+    })
+    
+    return JSON.stringify(repos, null, 2)
+  },
+})
+```
+
+### File system tool
+
+Create a tool that performs custom file operations:
+
+```ts title=".opencode/tools/count-lines.ts"
+import { tool } from "@opencode-ai/plugin"
+import { readdir, stat } from "fs/promises"
+import path from "path"
+
+export default tool({
+  description: "Count total lines of code in a directory",
+  args: {
+    directory: tool.schema.string().describe("Directory to analyze"),
+    extensions: tool.schema.array(tool.schema.string()).default([".ts", ".js", ".tsx", ".jsx"]).describe("File extensions to include"),
+  },
+  async execute(args, context) {
+    const targetDir = path.isAbsolute(args.directory)
+      ? args.directory
+      : path.join(context.directory, args.directory)
+    
+    let totalLines = 0
+    let fileCount = 0
+    
+    async function countDir(dir: string) {
+      const entries = await readdir(dir, { withFileTypes: true })
+      
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name)
+        
+        if (entry.isDirectory()) {
+          await countDir(fullPath)
+        } else if (args.extensions.some(ext => entry.name.endsWith(ext))) {
+          const content = await Bun.file(fullPath).text()
+          const lines = content.split('\n').length
+          totalLines += lines
+          fileCount++
+        }
+      }
+    }
+    
+    await countDir(targetDir)
+    
+    return `Found ${fileCount} files with ${totalLines} total lines of code`
+  },
+})
+```
+
+### Shell command tool
+
+Create a tool that wraps shell commands:
+
+```ts title=".opencode/tools/docker-ps.ts"
+import { tool } from "@opencode-ai/plugin"
+
+export default tool({
+  description: "List running Docker containers",
+  args: {
+    all: tool.schema.boolean().default(false).describe("Show all containers, not just running ones"),
+  },
+  async execute(args, context) {
+    const cmd = args.all ? "docker ps -a" : "docker ps"
+    const result = await Bun.$`${cmd}`.text()
+    return result
+  },
+})
+```
+
+---
+
+## Tool registration via plugins
+
+You can also register tools through [plugins](./plugins.mdx) instead of separate files:
+
+```ts title=".opencode/plugins/my-tools.ts"
+import { type Plugin, tool } from "@opencode-ai/plugin"
+
+export const MyToolsPlugin: Plugin = async (ctx) => {
+  return {
+    tool: {
+      greet: tool({
+        description: "Greet a user",
+        args: {
+          name: tool.schema.string().describe("Name to greet"),
+        },
+        async execute(args) {
+          return `Hello, ${args.name}!`
+        },
+      }),
+      calculate: tool({
+        description: "Perform a calculation",
+        args: {
+          expression: tool.schema.string().describe("Math expression to evaluate"),
+        },
+        async execute(args) {
+          try {
+            const result = eval(args.expression)
+            return `Result: ${result}`
+          } catch (error) {
+            return `Error: ${error.message}`
+          }
+        },
+      }),
+    },
+  }
+}
+```
+
+This approach is useful when:
+- You want to group related tools together
+- Your tools need shared state or initialization
+- You want to conditionally register tools based on plugin configuration
+
+---
+
+## Best practices
+
+### Write clear descriptions
+
+The LLM relies on your tool's description to decide when to use it. Be specific:
+
+```ts
+// Good
+description: "Search GitHub repositories by keyword and return name, description, stars, and URL"
+
+// Bad
+description: "Search GitHub"
+```
+
+### Validate inputs
+
+Use Zod's validation features to ensure correct inputs:
+
+```ts
+args: {
+  email: tool.schema.string().email().describe("User email address"),
+  age: tool.schema.number().min(0).max(150).describe("User age"),
+  url: tool.schema.string().url().describe("Website URL"),
+}
+```
+
+### Return structured output
+
+Return well-formatted output that's easy for the LLM to parse:
+
+```ts
+// Good: structured JSON
+return JSON.stringify({
+  status: "success",
+  data: results,
+  count: results.length
+}, null, 2)
+
+// Also good: formatted text
+return `Found ${results.length} results:\n\n${results.map(r => `- ${r.name}`).join('\n')}`
+```
+
+### Handle errors gracefully
+
+Catch errors and return helpful messages:
+
+```ts
+async execute(args, context) {
+  try {
+    const result = await riskyOperation(args)
+    return `Success: ${result}`
+  } catch (error) {
+    return `Error: ${error.message}. Please check the ${args.param} parameter.`
+  }
+}
+```
+
+### Use context appropriately
+
+```ts
+// Good: use context.directory for relative paths
+const filePath = path.join(context.directory, args.file)
+
+// Bad: use process.cwd()
+const filePath = path.join(process.cwd(), args.file)
+```
+
+### Respect cancellation
+
+For long-running operations, check the abort signal:
+
+```ts
+for (const item of largeArray) {
+  if (context.abort.aborted) {
+    return "Operation cancelled by user"
+  }
+  await processItem(item)
+}
+```

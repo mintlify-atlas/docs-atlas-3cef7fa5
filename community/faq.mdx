@@ -1,0 +1,302 @@
+---
+title: "FAQ"
+description: "Frequently asked questions about OpenCode"
+---
+
+Common questions about OpenCode, installation, usage, and troubleshooting.
+
+## General
+
+<AccordionGroup>
+  <Accordion title="What is OpenCode?" icon="circle-question">
+    OpenCode is an AI coding agent CLI tool that helps developers with software engineering tasks. It's a powerful command-line interface that uses large language models to assist with coding, debugging, refactoring, and more.
+
+    OpenCode can:
+    - Write and edit code across multiple files
+    - Debug and fix issues
+    - Refactor and optimize code
+    - Generate documentation
+    - Answer questions about your codebase
+  </Accordion>
+
+  <Accordion title="How is OpenCode different from other AI coding tools?" icon="code-compare">
+    OpenCode is designed as a CLI-first tool that gives you full control over your development workflow. Unlike IDE-specific tools, OpenCode:
+
+    - Works in any terminal environment
+    - Supports multiple AI providers (OpenAI, Anthropic, Google, and more)
+    - Offers a plugin system for extensibility
+    - Provides both TUI (Terminal UI) and web interfaces
+    - Has an active open-source community building plugins and integrations
+  </Accordion>
+
+  <Accordion title="Is OpenCode free?" icon="dollar-sign">
+    OpenCode itself is free and open-source software licensed under the MIT license. However, you'll need API access to AI providers (like OpenAI or Anthropic) which have their own pricing.
+
+    Some community plugins provide alternative authentication methods that can reduce or eliminate API costs by using existing subscriptions.
+  </Accordion>
+
+  <Accordion title="What AI providers does OpenCode support?" icon="server">
+    OpenCode supports multiple AI providers including:
+
+    - OpenAI (GPT-4, GPT-3.5)
+    - Anthropic (Claude)
+    - Google (Gemini)
+    - And many more through community plugins
+
+    To add support for a new provider, contribute to [models.dev](https://github.com/anomalyco/models.dev).
+  </Accordion>
+</AccordionGroup>
+
+## Installation & Setup
+
+<AccordionGroup>
+  <Accordion title="How do I install OpenCode?" icon="download">
+    The easiest way to install OpenCode is via npm:
+
+    ```bash
+    npm install -g opencode
+    ```
+
+    Or using your preferred package manager:
+
+    ```bash
+    # Using Yarn
+    yarn global add opencode
+
+    # Using pnpm
+    pnpm add -g opencode
+    ```
+
+    For development, see the [Contributing guide](/community/contributing) for instructions on building from source.
+  </Accordion>
+
+  <Accordion title="How do I configure my API keys?" icon="key">
+    OpenCode will prompt you to configure your API keys when you first run it. You can also manually configure them:
+
+    ```bash
+    opencode config
+    ```
+
+    Your configuration is stored securely in your home directory.
+  </Accordion>
+
+  <Accordion title="What are the system requirements?" icon="computer">
+    OpenCode requires:
+
+    - Node.js 18 or higher (for npm installation)
+    - Bun 1.3+ (for development)
+    - A terminal emulator with modern features
+    - API access to at least one supported AI provider
+
+    OpenCode runs on macOS, Linux, and Windows (via WSL).
+  </Accordion>
+</AccordionGroup>
+
+## Usage
+
+<AccordionGroup>
+  <Accordion title="How do I start using OpenCode?" icon="play">
+    Navigate to your project directory and run:
+
+    ```bash
+    opencode
+    ```
+
+    This will start the TUI (Terminal User Interface) where you can interact with the AI agent. You can also use specific commands:
+
+    ```bash
+    # Start web interface
+    opencode web
+
+    # Start headless server
+    opencode serve
+
+    # Run in a specific directory
+    opencode /path/to/project
+    ```
+  </Accordion>
+
+  <Accordion title="What commands does OpenCode support?" icon="terminal">
+    OpenCode supports various commands:
+
+    - `opencode` - Start TUI in current directory
+    - `opencode web` - Start web interface
+    - `opencode serve` - Start headless API server
+    - `opencode attach <url>` - Attach to existing server
+    - `opencode --help` - Show all available commands
+
+    Within the TUI, you can use slash commands like `/help`, `/clear`, `/exit`, and more.
+  </Accordion>
+
+  <Accordion title="Can I use OpenCode with my IDE?" icon="code">
+    Yes! OpenCode is designed to work alongside your IDE. Some community projects provide deeper integration:
+
+    - [opencode.nvim](https://github.com/NickvanDyke/opencode.nvim) - Neovim plugin
+    - [OpenChamber](https://github.com/btriapitsyn/openchamber) - VS Code Extension
+    - [OpenCode-Obsidian](https://github.com/mtymek/opencode-obsidian) - Obsidian plugin
+
+    Check out the [Ecosystem](/community/ecosystem) page for more integrations.
+  </Accordion>
+
+  <Accordion title="How do I install plugins?" icon="puzzle-piece">
+    OpenCode has a plugin system that allows you to extend functionality. To install plugins, you typically:
+
+    1. Install the plugin package via npm
+    2. Configure it in your OpenCode settings
+
+    Some plugins may have additional setup steps. Check the plugin's documentation for specific instructions.
+
+    See the [Ecosystem](/community/ecosystem) page for available plugins.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="OpenCode is not responding or hanging" icon="spinner">
+    If OpenCode appears to hang:
+
+    1. Check if the AI provider's API is responsive
+    2. Verify your API key is valid and has sufficient credits
+    3. Try restarting OpenCode
+    4. Check for any error messages in the terminal
+
+    If you're using shell commands that require interactive input, consider using the [opencode-shell-strategy](https://github.com/JRedeker/opencode-shell-strategy) plugin to prevent TTY-related hangs.
+  </Accordion>
+
+  <Accordion title="I'm getting API rate limit errors" icon="ban">
+    Rate limit errors mean you're making too many requests to the AI provider's API. To resolve:
+
+    1. Wait for the rate limit to reset (usually a few minutes)
+    2. Consider upgrading your API plan for higher limits
+    3. Use the [opencode-dynamic-context-pruning](https://github.com/Tarquinen/opencode-dynamic-context-pruning) plugin to optimize token usage
+  </Accordion>
+
+  <Accordion title="The AI is not understanding my codebase" icon="question">
+    To help the AI better understand your codebase:
+
+    1. Provide clear, specific instructions
+    2. Reference specific files or functions
+    3. Use the [opencode-type-inject](https://github.com/nick-vi/opencode-type-inject) plugin for better type awareness
+    4. Break down complex tasks into smaller steps
+  </Accordion>
+
+  <Accordion title="How do I report a bug?" icon="bug">
+    To report a bug:
+
+    1. Check if the issue already exists in [GitHub Issues](https://github.com/anomalyco/opencode/issues)
+    2. Use the Bug Report template when creating a new issue
+    3. Include:
+       - OpenCode version (`opencode --version`)
+       - Your operating system
+       - Steps to reproduce
+       - Expected vs. actual behavior
+       - Any error messages
+
+    See the [Contributing guide](/community/contributing) for more details.
+  </Accordion>
+
+  <Accordion title="Where can I get help?" icon="life-ring">
+    If you need help:
+
+    - Join the [Discord community](https://opencode.ai/discord)
+    - Check [GitHub Discussions](https://github.com/anomalyco/opencode/discussions)
+    - Search existing [GitHub Issues](https://github.com/anomalyco/opencode/issues)
+    - Read the documentation at [opencode.ai/docs](https://opencode.ai/docs)
+  </Accordion>
+</AccordionGroup>
+
+## Development & Contributing
+
+<AccordionGroup>
+  <Accordion title="How can I contribute to OpenCode?" icon="code-pull-request">
+    We welcome contributions! See the [Contributing guide](/community/contributing) for detailed instructions.
+
+    The most common contributions are:
+    - Bug fixes
+    - Documentation improvements
+    - New LSP/formatter support
+    - Provider integrations
+    - Performance improvements
+  </Accordion>
+
+  <Accordion title="How do I build a plugin for OpenCode?" icon="plug">
+    To build a plugin:
+
+    1. Use the [opencode plugin template](https://github.com/zenobi-us/opencode-plugin-template/) as a starting point
+    2. Follow the plugin API documentation
+    3. Test your plugin locally with `bun dev`
+    4. Submit your plugin to the [Ecosystem](/community/ecosystem)
+
+    Check out existing plugins on the [Ecosystem](/community/ecosystem) page for inspiration.
+  </Accordion>
+
+  <Accordion title="Where is the source code?" icon="github">
+    OpenCode is open-source and available on GitHub:
+
+    [github.com/anomalyco/opencode](https://github.com/anomalyco/opencode)
+
+    The repository includes:
+    - Core OpenCode logic
+    - TUI and web interfaces
+    - Desktop app
+    - Plugin system
+    - Documentation
+  </Accordion>
+
+  <Accordion title="What's the development workflow?" icon="diagram-project">
+    The development workflow is:
+
+    1. Fork the repository
+    2. Create a feature branch
+    3. Make your changes
+    4. Test locally with `bun dev`
+    5. Open a PR following the [Contributing guidelines](/community/contributing)
+
+    See the [Contributing guide](/community/contributing) for detailed setup instructions.
+  </Accordion>
+</AccordionGroup>
+
+## Community
+
+<AccordionGroup>
+  <Accordion title="How do I join the community?" icon="users">
+    Join the OpenCode community:
+
+    - [Discord](https://opencode.ai/discord) - Chat with users and maintainers
+    - [GitHub Discussions](https://github.com/anomalyco/opencode/discussions) - Ask questions and share ideas
+    - [Twitter](https://twitter.com/opencode_ai) - Latest news and updates
+    - [opencode.cafe](https://opencode.cafe) - Community hub
+  </Accordion>
+
+  <Accordion title="Where can I find community plugins and projects?" icon="box-open">
+    Check out the [Ecosystem](/community/ecosystem) page for:
+
+    - Plugins that extend OpenCode
+    - Projects built on OpenCode
+    - Pre-configured agents
+    - Integrations with other tools
+
+    You can also browse [awesome-opencode](https://github.com/awesome-opencode/awesome-opencode) for a curated list.
+  </Accordion>
+
+  <Accordion title="Can I add my project to the ecosystem?" icon="circle-plus">
+    Yes! If you've built something with OpenCode:
+
+    1. Fork the [OpenCode repository](https://github.com/anomalyco/opencode)
+    2. Add your project to the ecosystem documentation
+    3. Submit a PR with a brief description
+
+    See the [Contributing guide](/community/contributing) for PR guidelines.
+  </Accordion>
+</AccordionGroup>
+
+## Still have questions?
+
+<Card
+  title="Join our Discord"
+  icon="discord"
+  href="https://opencode.ai/discord"
+>
+  Chat with the community and get help from maintainers and other users.
+</Card>

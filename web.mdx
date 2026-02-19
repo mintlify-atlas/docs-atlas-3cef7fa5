@@ -1,0 +1,371 @@
+---
+title: "Web Interface"
+description: "Using OpenCode in your browser with the web interface"
+---
+
+OpenCode can run as a web application in your browser, providing the same powerful AI coding experience without needing a terminal. The web interface offers a modern, graphical experience with file trees, diff viewers, and session management.
+
+## Getting Started
+
+Start the web interface by running:
+
+```bash
+opencode web
+```
+
+This starts a local server on `127.0.0.1` with a random available port and automatically opens OpenCode in your default browser.
+
+<Note>
+If `OPENCODE_SERVER_PASSWORD` is not set, the server will be unsecured. This is fine for local use but should be set for network access.
+</Note>
+
+<Tip>
+**Windows Users:** For the best experience, run `opencode web` from WSL rather than PowerShell. This ensures proper file system access and terminal integration.
+</Tip>
+
+---
+
+## Configuration
+
+You can configure the web server using command line flags or your OpenCode config file.
+
+### Port
+
+By default, OpenCode picks an available port. Specify a port:
+
+```bash
+opencode web --port 4096
+```
+
+### Hostname
+
+By default, the server binds to `127.0.0.1` (localhost only). To make OpenCode accessible on your network:
+
+```bash
+opencode web --hostname 0.0.0.0
+```
+
+When using `0.0.0.0`, OpenCode displays both local and network addresses:
+
+```
+Local access:       http://localhost:4096
+Network access:     http://192.168.1.100:4096
+```
+
+### mDNS Discovery
+
+Enable mDNS to make your server discoverable on the local network:
+
+```bash
+opencode web --mdns
+```
+
+This automatically sets the hostname to `0.0.0.0` and advertises the server as `opencode.local`.
+
+Customize the mDNS domain name to run multiple instances:
+
+```bash
+opencode web --mdns --mdns-domain myproject.local
+```
+
+### CORS
+
+Allow additional domains for CORS (useful for custom frontends):
+
+```bash
+opencode web --cors https://example.com
+```
+
+### Authentication
+
+Protect access with a password using environment variables:
+
+```bash
+OPENCODE_SERVER_PASSWORD=secret opencode web
+```
+
+The username defaults to `opencode` but can be changed:
+
+```bash
+OPENCODE_SERVER_USERNAME=myuser OPENCODE_SERVER_PASSWORD=secret opencode web
+```
+
+---
+
+## Config File
+
+Configure server settings in your `opencode.json` config file:
+
+```json
+{
+  "server": {
+    "port": 4096,
+    "hostname": "0.0.0.0",
+    "mdns": true,
+    "cors": ["https://example.com"]
+  }
+}
+```
+
+Command line flags take precedence over config file settings.
+
+---
+
+## Using the Web Interface
+
+Once started, the web interface provides a comprehensive view of your OpenCode sessions and workspace.
+
+### Sessions
+
+The homepage displays your sessions with key information:
+
+- Active sessions with recent activity
+- Session titles and timestamps
+- Quick access to start new sessions
+
+Click on a session to open it and continue your conversation.
+
+### Chat Interface
+
+The main chat interface includes:
+
+- **Message Timeline** - View the full conversation history
+- **Composer** - Write and submit messages to the AI
+- **File References** - Add files to context using `@` mentions
+- **Command Palette** - Access slash commands like `/compact`, `/share`, etc.
+- **Model Selector** - Switch between available AI models
+- **Agent Selector** - Choose different agent modes
+
+### File Explorer
+
+The file tree panel allows you to:
+
+- Browse your project files
+- Open files in the editor
+- View file changes made during the session
+- Add files to the conversation context
+
+Toggle the file tree with the sidebar button or keyboard shortcut.
+
+### Review Panel
+
+The review panel shows all changes made during the session:
+
+- **Session Changes** - All file modifications in the current session
+- **Turn Changes** - Changes from the most recent AI response
+- **Unified/Split Diff** - Toggle between diff viewing modes
+- **Line Comments** - Add comments to specific code sections
+
+The review panel helps you track and understand what the AI has modified.
+
+### Terminal Panel
+
+Access an integrated terminal for running commands:
+
+- Run shell commands
+- View command output
+- Execute build scripts and tests
+- Debug and explore your codebase
+
+The terminal integrates seamlessly with the chat, allowing the AI to see command outputs.
+
+### Context Management
+
+Manage conversation context efficiently:
+
+- **Context Tab** - View all files and information in the current context
+- **Add/Remove Files** - Control what the AI can see
+- **Context Usage** - Monitor token usage and context limits
+- **Comments** - Add notes and instructions to specific code sections
+
+### Server Status
+
+Click "See Servers" on the homepage to view:
+
+- Connected servers and their status
+- Server URLs and connection information
+- Health and availability indicators
+
+---
+
+## Keyboard Shortcuts
+
+The web interface supports keyboard shortcuts for efficient navigation:
+
+- `Cmd/Ctrl + K` - Open command palette
+- `Cmd/Ctrl + Enter` - Submit message
+- `Cmd/Ctrl + N` - New session
+- `Cmd/Ctrl + /` - Focus chat input
+- `Cmd/Ctrl + B` - Toggle file tree
+- `Cmd/Ctrl + Shift + R` - Toggle review panel
+
+---
+
+## Mobile Support
+
+The web interface is fully responsive and works on mobile devices:
+
+- Touch-optimized interface
+- Mobile-friendly navigation
+- Swipe gestures for panels
+- Tab-based layout for session and changes
+
+Access OpenCode from your phone or tablet when away from your desk.
+
+---
+
+## Attaching a Terminal TUI
+
+You can attach a terminal TUI to a running web server:
+
+```bash
+# Start the web server
+opencode web --port 4096
+
+# In another terminal, attach the TUI
+opencode attach http://localhost:4096
+```
+
+This allows you to use both the web interface and terminal simultaneously, sharing the same sessions and state.
+
+<Tip>
+Use the TUI for quick keyboard-driven tasks and the web interface for visual file browsing and diff review.
+</Tip>
+
+---
+
+## Session Management
+
+### Creating Sessions
+
+Start a new session from the homepage or use the "New Session" button in the interface.
+
+You can also create sessions with specific configurations:
+
+- Choose a starting model
+- Select an agent mode
+- Set a working directory
+
+### Sharing Sessions
+
+Share sessions with team members:
+
+1. Click the share button or use `/share` command
+2. Copy the generated link
+3. Share the link with others
+
+Shared sessions are read-only by default. Recipients can view the conversation and fork it to continue working.
+
+### Forking Sessions
+
+Create a fork of an existing session to explore alternative approaches:
+
+1. Open the session you want to fork
+2. Click the fork button in the session header
+3. Continue from that point with a new session ID
+
+Forking is useful for trying different solutions without affecting the original conversation.
+
+---
+
+## Collaborative Features
+
+### Multiple Windows
+
+Open the same session in multiple browser windows or tabs. All instances stay synchronized:
+
+- Messages appear in real-time across all windows
+- File changes are reflected immediately
+- Tool execution shows progress everywhere
+
+### Cross-Device Access
+
+With network access enabled, access your OpenCode server from any device on your network:
+
+```bash
+opencode web --hostname 0.0.0.0 --port 4096
+```
+
+Then open `http://<your-ip>:4096` on another device.
+
+---
+
+## Performance Optimization
+
+### Session Compaction
+
+As conversations grow, compact them to reduce context usage:
+
+1. Use the `/compact` command
+2. Or click "Compact" in the session menu
+
+Compaction summarizes previous turns while preserving important context.
+
+### Context Limits
+
+Monitor context usage in the session header:
+
+- Token usage indicator shows current usage vs. model limits
+- Warning appears when approaching the limit
+- Compact or start a new session when needed
+
+---
+
+## Advanced Features
+
+### MCP Servers
+
+The web interface supports Model Context Protocol (MCP) servers configured in your OpenCode settings. MCP servers provide additional tools and capabilities to the AI.
+
+### Custom Commands
+
+Custom slash commands defined in your OpenCode configuration are available in the web interface command palette.
+
+### Themes
+
+The web interface supports multiple themes:
+
+- Light and dark modes
+- Automatic theme switching based on system preferences
+- Custom theme configurations
+
+### Language Support
+
+The interface includes internationalization support for multiple languages. Language settings follow your browser preferences.
+
+---
+
+## Troubleshooting
+
+### Server Won't Start
+
+If the server fails to start:
+
+1. Check if the port is already in use
+2. Try a different port: `opencode web --port 4097`
+3. Check firewall settings for blocked ports
+
+### Can't Access from Network
+
+If other devices can't connect:
+
+1. Ensure you're using `--hostname 0.0.0.0`
+2. Check firewall rules allow the port
+3. Verify network connectivity between devices
+
+### Authentication Issues
+
+If authentication isn't working:
+
+1. Verify `OPENCODE_SERVER_PASSWORD` is set
+2. Check username if using custom `OPENCODE_SERVER_USERNAME`
+3. Clear browser cookies and try again
+
+### Performance Issues
+
+If the interface feels slow:
+
+1. Compact long sessions to reduce history
+2. Close unused tabs and file previews
+3. Check network latency if using remote access
+4. Consider starting a new session for fresh performance

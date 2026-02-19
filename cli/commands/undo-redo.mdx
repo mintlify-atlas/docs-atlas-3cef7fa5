@@ -1,0 +1,374 @@
+---
+title: "Undo and Redo"
+description: "Revert and reapply changes during an OpenCode session"
+---
+
+## Overview
+
+OpenCode provides `/undo` and `/redo` commands to navigate through your conversation history and revert unwanted changes. This is essential when:
+
+- The assistant made an incorrect change
+- You want to try a different approach
+- You need to backtrack to an earlier state
+- You made a mistake in your request
+
+## /undo Command
+
+Revert the last assistant message and any changes it made.
+
+### Usage
+
+```
+/undo
+```
+
+### What Gets Undone
+
+When you undo:
+
+1. **Message removed** - The last assistant message is removed from history
+2. **File changes reverted** - Any file modifications are undone
+3. **Tool executions canceled** - Effects of tool calls are reversed
+4. **State restored** - Session returns to the previous state
+
+### Multiple Undo
+
+You can undo multiple times to go further back:
+
+```
+/undo  # Undo last message
+/undo  # Undo previous message
+/undo  # Undo message before that
+```
+
+Each `/undo` steps back one assistant message.
+
+### Example
+
+```
+User: Fix the typo in README.md
+
+Assistant:
+$ Edit README.md
+[Changes made]
+
+User: /undo  # Reverts the edit
+
+User: Actually, fix all typos in the docs/ directory
+```
+
+## /redo Command
+
+Reapply a previously undone message.
+
+### Usage
+
+```
+/redo
+```
+
+### When Redo Works
+
+Redo is available when:
+
+- You've used `/undo` at least once
+- You haven't sent new messages since undoing
+- The undone messages are still in history
+
+### Multiple Redo
+
+Redo multiple times to reapply several undone messages:
+
+```
+/redo  # Redo first undone message
+/redo  # Redo second undone message
+/redo  # Redo third undone message
+```
+
+### Redo Limits
+
+You cannot redo after:
+
+- Sending a new message
+- Closing and reopening the session
+- Using `/fork` to branch the conversation
+
+### Example
+
+```
+User: Refactor the login function
+
+Assistant:
+$ Edit auth.ts
+[Makes changes]
+
+User: /undo  # Changed my mind
+
+User: /redo  # Actually, those changes were good
+```
+
+## How It Works
+
+### Message History
+
+OpenCode maintains a complete history of messages:
+
+```
+1. User: "Create a new component"
+2. Assistant: [creates component]
+3. User: "Add prop validation"
+4. Assistant: [adds validation]
+5. User: "/undo"
+   → State returns to after message #2
+6. User: "Add TypeScript types instead"
+7. Assistant: [adds types]
+```
+
+### File State
+
+File changes are tracked:
+
+- **Before undo**: File has changes from assistant
+- **After undo**: File restored to previous state
+- **After redo**: Changes reapplied
+
+### Tool Effects
+
+Some tool effects can't be fully undone:
+
+- **Bash commands**: Side effects persist (use with caution)
+- **API calls**: External changes not reverted
+- **Deleted files**: Moved to trash, can be recovered
+
+## Use Cases
+
+### Correcting Mistakes
+
+```
+User: Update the API endpoint to /api/v2/users
+
+Assistant: [Makes changes]
+
+User: /undo  # Wrong endpoint
+User: Update the API endpoint to /api/v2/customers
+```
+
+### Exploring Alternatives
+
+```
+User: Implement authentication with JWT
+
+Assistant: [Implements JWT auth]
+
+User: /undo
+User: Implement authentication with sessions instead
+
+Assistant: [Implements session auth]
+
+User: /undo
+User: /redo  # JWT was better
+```
+
+### Recovering from Errors
+
+```
+User: Delete all unused imports
+
+Assistant: [Accidentally deletes important imports]
+
+User: /undo  # Restore imports
+User: Remove only unused imports from utils.ts
+```
+
+### Iterative Refinement
+
+```
+User: Make the button larger
+Assistant: [Increases size to 60px]
+User: /undo
+
+User: Make the button slightly larger
+Assistant: [Increases size to 40px]
+User: Perfect!
+```
+
+## Best Practices
+
+<CardGroup>
+  <Card title="Undo immediately" icon="clock">
+    Undo right away if you spot an issue
+  </Card>
+  <Card title="Review changes" icon="eye">
+    Check what was changed before deciding to undo
+  </Card>
+  <Card title="Be specific next time" icon="bullseye">
+    After undoing, give clearer instructions
+  </Card>
+  <Card title="Use /fork for experiments" icon="code-branch">
+    Fork instead of undo/redo for major changes
+  </Card>
+</CardGroup>
+
+## Limitations
+
+### Cannot Undo User Messages
+
+You can only undo assistant messages, not your own:
+
+```
+User: Wrong command here
+# Cannot undo this - just send a correction
+```
+
+### External Side Effects
+
+Some actions can't be fully undone:
+
+```
+# These have side effects:
+Assistant runs: npm install package
+Assistant calls: curl -X POST https://api.com/create
+Assistant executes: git push origin main
+
+# /undo won't reverse these
+```
+
+<Warning>
+  Be cautious with destructive operations. They may not be fully reversible.
+</Warning>
+
+### Context Compaction
+
+After [context compaction](/config#compaction), some undo history may be lost:
+
+- Recent messages remain undoable
+- Very old messages may not be reversible
+- Snapshots preserve key states
+
+## Alternatives to Undo/Redo
+
+### Fork Instead
+
+Use `/fork` to branch without losing history:
+
+```
+/fork  # Create new branch
+# Try experimental changes
+# Original conversation preserved
+```
+
+### Git for Recovery
+
+Leverage git for file recovery:
+
+```bash
+# Check what was changed
+git diff
+
+# Restore specific file
+git checkout -- file.ts
+
+# Undo all uncommitted changes
+git reset --hard
+```
+
+### Snapshots
+
+OpenCode creates automatic snapshots:
+
+```bash
+# View snapshots
+ls ~/.local/share/opencode/snapshots/
+
+# Restore from snapshot
+opencode import snapshot-<timestamp>.json
+```
+
+## Technical Details
+
+### Storage
+
+Undo/redo state is maintained:
+
+- In-memory for the current session
+- In the session database
+- Not affected by closing/reopening TUI (when using same session)
+
+### Session Continuity
+
+When continuing a session:
+
+```bash
+# Continue last session
+opencode --continue
+
+# Undo still works for recent messages
+/undo
+```
+
+### Fork Impact
+
+Forking clears redo stack:
+
+```
+/undo  # Undo a message
+/fork  # Create fork
+/redo  # No longer available
+```
+
+## Troubleshooting
+
+### Undo Not Working
+
+**Problem**: `/undo` doesn't revert changes
+
+**Solutions**:
+- Check if there's anything to undo
+- Verify files aren't read-only
+- Ensure session database is writable
+- Try undoing again (may need multiple undos)
+
+### Redo Not Available
+
+**Problem**: `/redo` command fails
+
+**Solutions**:
+- You may have sent a new message (clears redo stack)
+- Session was forked (clears redo)
+- All undone messages already redone
+
+### Changes Persist
+
+**Problem**: Some changes remain after undo
+
+**Solutions**:
+- External API calls can't be undone
+- Bash commands may have side effects
+- File system operations outside project scope
+- Use `git reset` for file recovery
+
+## Keyboard Shortcuts
+
+In the TUI, you can also use:
+
+- **Ctrl+Z** (or Cmd+Z on macOS): Undo
+- **Ctrl+Shift+Z** (or Cmd+Shift+Z): Redo
+
+See [keybinds documentation](/keybinds) for customization.
+
+## Related Topics
+
+<CardGroup cols={2}>
+  <Card title="/fork" icon="code-branch" href="/cli/commands/init">
+    Branch conversations
+  </Card>
+  <Card title="Sessions" icon="clock" href="/cli/commands/init">
+    Managing sessions
+  </Card>
+  <Card title="Snapshots" icon="camera" href="/snapshot">
+    Automatic state snapshots
+  </Card>
+  <Card title="Version Control" icon="code-branch" href="/troubleshooting">
+    Using git with OpenCode
+  </Card>
+</CardGroup>

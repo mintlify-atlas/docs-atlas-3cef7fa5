@@ -1,0 +1,564 @@
+---
+title: Keybinds
+description: Customize your keybinds
+---
+
+OpenCode has a list of keybinds that you can customize through the OpenCode config.
+
+```json title="opencode.json"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "keybinds": {
+    "leader": "ctrl+x",
+    "app_exit": "ctrl+c,ctrl+d,<leader>q",
+    "editor_open": "<leader>e",
+    "theme_list": "<leader>t",
+    "sidebar_toggle": "<leader>b",
+    "scrollbar_toggle": "none",
+    "username_toggle": "none",
+    "status_view": "<leader>s",
+    "tool_details": "none",
+    "session_export": "<leader>x",
+    "session_new": "<leader>n",
+    "session_list": "<leader>l",
+    "session_timeline": "<leader>g",
+    "session_fork": "none",
+    "session_rename": "none",
+    "session_share": "none",
+    "session_unshare": "none",
+    "session_interrupt": "escape",
+    "session_compact": "<leader>c",
+    "session_child_cycle": "<leader>right",
+    "session_child_cycle_reverse": "<leader>left",
+    "session_parent": "<leader>up",
+    "messages_page_up": "pageup,ctrl+alt+b",
+    "messages_page_down": "pagedown,ctrl+alt+f",
+    "messages_line_up": "ctrl+alt+y",
+    "messages_line_down": "ctrl+alt+e",
+    "messages_half_page_up": "ctrl+alt+u",
+    "messages_half_page_down": "ctrl+alt+d",
+    "messages_first": "ctrl+g,home",
+    "messages_last": "ctrl+alt+g,end",
+    "messages_next": "none",
+    "messages_previous": "none",
+    "messages_copy": "<leader>y",
+    "messages_undo": "<leader>u",
+    "messages_redo": "<leader>r",
+    "messages_last_user": "none",
+    "messages_toggle_conceal": "<leader>h",
+    "model_list": "<leader>m",
+    "model_cycle_recent": "f2",
+    "model_cycle_recent_reverse": "shift+f2",
+    "model_cycle_favorite": "none",
+    "model_cycle_favorite_reverse": "none",
+    "variant_cycle": "ctrl+t",
+    "command_list": "ctrl+p",
+    "agent_list": "<leader>a",
+    "agent_cycle": "tab",
+    "agent_cycle_reverse": "shift+tab",
+    "input_clear": "ctrl+c",
+    "input_paste": "ctrl+v",
+    "input_submit": "return",
+    "input_newline": "shift+return,ctrl+return,alt+return,ctrl+j",
+    "input_move_left": "left,ctrl+b",
+    "input_move_right": "right,ctrl+f",
+    "input_move_up": "up",
+    "input_move_down": "down",
+    "input_select_left": "shift+left",
+    "input_select_right": "shift+right",
+    "input_select_up": "shift+up",
+    "input_select_down": "shift+down",
+    "input_line_home": "ctrl+a",
+    "input_line_end": "ctrl+e",
+    "input_select_line_home": "ctrl+shift+a",
+    "input_select_line_end": "ctrl+shift+e",
+    "input_visual_line_home": "alt+a",
+    "input_visual_line_end": "alt+e",
+    "input_select_visual_line_home": "alt+shift+a",
+    "input_select_visual_line_end": "alt+shift+e",
+    "input_buffer_home": "home",
+    "input_buffer_end": "end",
+    "input_select_buffer_home": "shift+home",
+    "input_select_buffer_end": "shift+end",
+    "input_delete_line": "ctrl+shift+d",
+    "input_delete_to_line_end": "ctrl+k",
+    "input_delete_to_line_start": "ctrl+u",
+    "input_backspace": "backspace,shift+backspace",
+    "input_delete": "ctrl+d,delete,shift+delete",
+    "input_undo": "ctrl+-,super+z",
+    "input_redo": "ctrl+.,super+shift+z",
+    "input_word_forward": "alt+f,alt+right,ctrl+right",
+    "input_word_backward": "alt+b,alt+left,ctrl+left",
+    "input_select_word_forward": "alt+shift+f,alt+shift+right",
+    "input_select_word_backward": "alt+shift+b,alt+shift+left",
+    "input_delete_word_forward": "alt+d,alt+delete,ctrl+delete",
+    "input_delete_word_backward": "ctrl+w,ctrl+backspace,alt+backspace",
+    "history_previous": "up",
+    "history_next": "down",
+    "terminal_suspend": "ctrl+z",
+    "terminal_title_toggle": "none",
+    "tips_toggle": "<leader>h",
+    "display_thinking": "none"
+  }
+}
+```
+
+## Leader Key
+
+OpenCode uses a `leader` key for most keybinds. This avoids conflicts in your terminal.
+
+By default, `ctrl+x` is the leader key and most actions require you to first press the leader key and then the shortcut. For example, to start a new session you first press `ctrl+x` and then press `n`.
+
+You don't need to use a leader key for your keybinds but we recommend doing so.
+
+## Available Keybinds
+
+### Application
+
+<ParamField path="keybinds.leader" type="string" default="ctrl+x">
+Leader key that prefixes most other keybinds.
+</ParamField>
+
+<ParamField path="keybinds.app_exit" type="string" default="ctrl+c,ctrl+d,<leader>q">
+Exit the application.
+</ParamField>
+
+### Editor & UI
+
+<ParamField path="keybinds.editor_open" type="string" default="<leader>e">
+Open the editor.
+</ParamField>
+
+<ParamField path="keybinds.theme_list" type="string" default="<leader>t">
+Open the theme selection list.
+</ParamField>
+
+<ParamField path="keybinds.sidebar_toggle" type="string" default="<leader>b">
+Toggle the sidebar visibility.
+</ParamField>
+
+<ParamField path="keybinds.scrollbar_toggle" type="string" default="none">
+Toggle the scrollbar visibility.
+</ParamField>
+
+<ParamField path="keybinds.username_toggle" type="string" default="none">
+Toggle username display.
+</ParamField>
+
+<ParamField path="keybinds.status_view" type="string" default="<leader>s">
+View status information.
+</ParamField>
+
+<ParamField path="keybinds.tool_details" type="string" default="none">
+Show tool details.
+</ParamField>
+
+### Session Management
+
+<ParamField path="keybinds.session_export" type="string" default="<leader>x">
+Export the current session.
+</ParamField>
+
+<ParamField path="keybinds.session_new" type="string" default="<leader>n">
+Create a new session.
+</ParamField>
+
+<ParamField path="keybinds.session_list" type="string" default="<leader>l">
+Show the session list.
+</ParamField>
+
+<ParamField path="keybinds.session_timeline" type="string" default="<leader>g">
+View session timeline.
+</ParamField>
+
+<ParamField path="keybinds.session_fork" type="string" default="none">
+Fork the current session.
+</ParamField>
+
+<ParamField path="keybinds.session_rename" type="string" default="none">
+Rename the current session.
+</ParamField>
+
+<ParamField path="keybinds.session_share" type="string" default="none">
+Share the current session.
+</ParamField>
+
+<ParamField path="keybinds.session_unshare" type="string" default="none">
+Unshare the current session.
+</ParamField>
+
+<ParamField path="keybinds.session_interrupt" type="string" default="escape">
+Interrupt the current session.
+</ParamField>
+
+<ParamField path="keybinds.session_compact" type="string" default="<leader>c">
+Compact the session context.
+</ParamField>
+
+<ParamField path="keybinds.session_child_cycle" type="string" default="<leader>right">
+Cycle to next child session.
+</ParamField>
+
+<ParamField path="keybinds.session_child_cycle_reverse" type="string" default="<leader>left">
+Cycle to previous child session.
+</ParamField>
+
+<ParamField path="keybinds.session_parent" type="string" default="<leader>up">
+Go to parent session.
+</ParamField>
+
+### Messages Navigation
+
+<ParamField path="keybinds.messages_page_up" type="string" default="pageup,ctrl+alt+b">
+Scroll messages one page up.
+</ParamField>
+
+<ParamField path="keybinds.messages_page_down" type="string" default="pagedown,ctrl+alt+f">
+Scroll messages one page down.
+</ParamField>
+
+<ParamField path="keybinds.messages_line_up" type="string" default="ctrl+alt+y">
+Scroll messages one line up.
+</ParamField>
+
+<ParamField path="keybinds.messages_line_down" type="string" default="ctrl+alt+e">
+Scroll messages one line down.
+</ParamField>
+
+<ParamField path="keybinds.messages_half_page_up" type="string" default="ctrl+alt+u">
+Scroll messages half page up.
+</ParamField>
+
+<ParamField path="keybinds.messages_half_page_down" type="string" default="ctrl+alt+d">
+Scroll messages half page down.
+</ParamField>
+
+<ParamField path="keybinds.messages_first" type="string" default="ctrl+g,home">
+Jump to first message.
+</ParamField>
+
+<ParamField path="keybinds.messages_last" type="string" default="ctrl+alt+g,end">
+Jump to last message.
+</ParamField>
+
+<ParamField path="keybinds.messages_next" type="string" default="none">
+Go to next message.
+</ParamField>
+
+<ParamField path="keybinds.messages_previous" type="string" default="none">
+Go to previous message.
+</ParamField>
+
+<ParamField path="keybinds.messages_copy" type="string" default="<leader>y">
+Copy message content.
+</ParamField>
+
+<ParamField path="keybinds.messages_undo" type="string" default="<leader>u">
+Undo last message action.
+</ParamField>
+
+<ParamField path="keybinds.messages_redo" type="string" default="<leader>r">
+Redo message action.
+</ParamField>
+
+<ParamField path="keybinds.messages_last_user" type="string" default="none">
+Jump to last user message.
+</ParamField>
+
+<ParamField path="keybinds.messages_toggle_conceal" type="string" default="<leader>h">
+Toggle concealing of message details.
+</ParamField>
+
+### Model & Agent
+
+<ParamField path="keybinds.model_list" type="string" default="<leader>m">
+Open model selection list.
+</ParamField>
+
+<ParamField path="keybinds.model_cycle_recent" type="string" default="f2">
+Cycle through recently used models.
+</ParamField>
+
+<ParamField path="keybinds.model_cycle_recent_reverse" type="string" default="shift+f2">
+Cycle through recently used models in reverse.
+</ParamField>
+
+<ParamField path="keybinds.model_cycle_favorite" type="string" default="none">
+Cycle through favorite models.
+</ParamField>
+
+<ParamField path="keybinds.model_cycle_favorite_reverse" type="string" default="none">
+Cycle through favorite models in reverse.
+</ParamField>
+
+<ParamField path="keybinds.variant_cycle" type="string" default="ctrl+t">
+Cycle through model variants.
+</ParamField>
+
+<ParamField path="keybinds.command_list" type="string" default="ctrl+p">
+Open command list.
+</ParamField>
+
+<ParamField path="keybinds.agent_list" type="string" default="<leader>a">
+Open agent selection list.
+</ParamField>
+
+<ParamField path="keybinds.agent_cycle" type="string" default="tab">
+Cycle to next agent.
+</ParamField>
+
+<ParamField path="keybinds.agent_cycle_reverse" type="string" default="shift+tab">
+Cycle to previous agent.
+</ParamField>
+
+### Input Control
+
+<ParamField path="keybinds.input_clear" type="string" default="ctrl+c">
+Clear input field.
+</ParamField>
+
+<ParamField path="keybinds.input_paste" type="string" default="ctrl+v">
+Paste into input field.
+</ParamField>
+
+<ParamField path="keybinds.input_submit" type="string" default="return">
+Submit input.
+</ParamField>
+
+<ParamField path="keybinds.input_newline" type="string" default="shift+return,ctrl+return,alt+return,ctrl+j">
+Insert newline in input.
+</ParamField>
+
+<ParamField path="keybinds.input_move_left" type="string" default="left,ctrl+b">
+Move cursor left.
+</ParamField>
+
+<ParamField path="keybinds.input_move_right" type="string" default="right,ctrl+f">
+Move cursor right.
+</ParamField>
+
+<ParamField path="keybinds.input_move_up" type="string" default="up">
+Move cursor up.
+</ParamField>
+
+<ParamField path="keybinds.input_move_down" type="string" default="down">
+Move cursor down.
+</ParamField>
+
+<ParamField path="keybinds.input_select_left" type="string" default="shift+left">
+Select text to the left.
+</ParamField>
+
+<ParamField path="keybinds.input_select_right" type="string" default="shift+right">
+Select text to the right.
+</ParamField>
+
+<ParamField path="keybinds.input_select_up" type="string" default="shift+up">
+Select text upward.
+</ParamField>
+
+<ParamField path="keybinds.input_select_down" type="string" default="shift+down">
+Select text downward.
+</ParamField>
+
+<ParamField path="keybinds.input_line_home" type="string" default="ctrl+a">
+Move to start of line.
+</ParamField>
+
+<ParamField path="keybinds.input_line_end" type="string" default="ctrl+e">
+Move to end of line.
+</ParamField>
+
+<ParamField path="keybinds.input_select_line_home" type="string" default="ctrl+shift+a">
+Select to start of line.
+</ParamField>
+
+<ParamField path="keybinds.input_select_line_end" type="string" default="ctrl+shift+e">
+Select to end of line.
+</ParamField>
+
+<ParamField path="keybinds.input_visual_line_home" type="string" default="alt+a">
+Move to visual start of line.
+</ParamField>
+
+<ParamField path="keybinds.input_visual_line_end" type="string" default="alt+e">
+Move to visual end of line.
+</ParamField>
+
+<ParamField path="keybinds.input_select_visual_line_home" type="string" default="alt+shift+a">
+Select to visual start of line.
+</ParamField>
+
+<ParamField path="keybinds.input_select_visual_line_end" type="string" default="alt+shift+e">
+Select to visual end of line.
+</ParamField>
+
+<ParamField path="keybinds.input_buffer_home" type="string" default="home">
+Move to start of buffer.
+</ParamField>
+
+<ParamField path="keybinds.input_buffer_end" type="string" default="end">
+Move to end of buffer.
+</ParamField>
+
+<ParamField path="keybinds.input_select_buffer_home" type="string" default="shift+home">
+Select to start of buffer.
+</ParamField>
+
+<ParamField path="keybinds.input_select_buffer_end" type="string" default="shift+end">
+Select to end of buffer.
+</ParamField>
+
+<ParamField path="keybinds.input_delete_line" type="string" default="ctrl+shift+d">
+Delete entire line.
+</ParamField>
+
+<ParamField path="keybinds.input_delete_to_line_end" type="string" default="ctrl+k">
+Delete from cursor to end of line.
+</ParamField>
+
+<ParamField path="keybinds.input_delete_to_line_start" type="string" default="ctrl+u">
+Delete from cursor to start of line.
+</ParamField>
+
+<ParamField path="keybinds.input_backspace" type="string" default="backspace,shift+backspace">
+Delete character before cursor.
+</ParamField>
+
+<ParamField path="keybinds.input_delete" type="string" default="ctrl+d,delete,shift+delete">
+Delete character at cursor.
+</ParamField>
+
+<ParamField path="keybinds.input_undo" type="string" default="ctrl+-,super+z">
+Undo input change.
+</ParamField>
+
+<ParamField path="keybinds.input_redo" type="string" default="ctrl+.,super+shift+z">
+Redo input change.
+</ParamField>
+
+<ParamField path="keybinds.input_word_forward" type="string" default="alt+f,alt+right,ctrl+right">
+Move forward one word.
+</ParamField>
+
+<ParamField path="keybinds.input_word_backward" type="string" default="alt+b,alt+left,ctrl+left">
+Move backward one word.
+</ParamField>
+
+<ParamField path="keybinds.input_select_word_forward" type="string" default="alt+shift+f,alt+shift+right">
+Select forward one word.
+</ParamField>
+
+<ParamField path="keybinds.input_select_word_backward" type="string" default="alt+shift+b,alt+shift+left">
+Select backward one word.
+</ParamField>
+
+<ParamField path="keybinds.input_delete_word_forward" type="string" default="alt+d,alt+delete,ctrl+delete">
+Delete word forward.
+</ParamField>
+
+<ParamField path="keybinds.input_delete_word_backward" type="string" default="ctrl+w,ctrl+backspace,alt+backspace">
+Delete word backward.
+</ParamField>
+
+### History
+
+<ParamField path="keybinds.history_previous" type="string" default="up">
+Go to previous history item.
+</ParamField>
+
+<ParamField path="keybinds.history_next" type="string" default="down">
+Go to next history item.
+</ParamField>
+
+### Terminal
+
+<ParamField path="keybinds.terminal_suspend" type="string" default="ctrl+z">
+Suspend the terminal.
+</ParamField>
+
+<ParamField path="keybinds.terminal_title_toggle" type="string" default="none">
+Toggle terminal title display.
+</ParamField>
+
+### Other
+
+<ParamField path="keybinds.tips_toggle" type="string" default="<leader>h">
+Toggle tips display.
+</ParamField>
+
+<ParamField path="keybinds.display_thinking" type="string" default="none">
+Display model thinking process.
+</ParamField>
+
+## Disable Keybind
+
+You can disable a keybind by adding the key to your config with a value of "none".
+
+```json title="opencode.json"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "keybinds": {
+    "session_compact": "none"
+  }
+}
+```
+
+## Desktop Prompt Shortcuts
+
+The OpenCode desktop app prompt input supports common Readline/Emacs-style shortcuts for editing text. These are built-in and currently not configurable via `opencode.json`.
+
+| Shortcut | Action                                   |
+| -------- | ---------------------------------------- |
+| `ctrl+a` | Move to start of current line            |
+| `ctrl+e` | Move to end of current line              |
+| `ctrl+b` | Move cursor back one character           |
+| `ctrl+f` | Move cursor forward one character        |
+| `alt+b`  | Move cursor back one word                |
+| `alt+f`  | Move cursor forward one word             |
+| `ctrl+d` | Delete character under cursor            |
+| `ctrl+k` | Kill to end of line                      |
+| `ctrl+u` | Kill to start of line                    |
+| `ctrl+w` | Kill previous word                       |
+| `alt+d`  | Kill next word                           |
+| `ctrl+t` | Transpose characters                     |
+| `ctrl+g` | Cancel popovers / abort running response |
+
+## Shift+Enter
+
+Some terminals don't send modifier keys with Enter by default. You may need to configure your terminal to send `Shift+Enter` as an escape sequence.
+
+### Windows Terminal
+
+Open your `settings.json` at:
+
+```
+%LOCALAPPDATA%\Packages\Microsoft.WindowsTerminal_8wekyb3d8bbwe\LocalState\settings.json
+```
+
+Add this to the root-level `actions` array:
+
+```json
+"actions": [
+  {
+    "command": {
+      "action": "sendInput",
+      "input": "\u001b[13;2u"
+    },
+    "id": "User.sendInput.ShiftEnterCustom"
+  }
+]
+```
+
+Add this to the root-level `keybindings` array:
+
+```json
+"keybindings": [
+  {
+    "keys": "shift+enter",
+    "id": "User.sendInput.ShiftEnterCustom"
+  }
+]
+```
+
+Save the file and restart Windows Terminal or open a new tab.

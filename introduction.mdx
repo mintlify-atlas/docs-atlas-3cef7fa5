@@ -1,0 +1,146 @@
+---
+title: Welcome to OpenCode
+description: The open source AI coding agent
+---
+
+OpenCode is an open source AI coding agent that accelerates your software development workflow. Available as a terminal-based interface, desktop app, or IDE extension, it brings AI assistance directly into your development environment.
+
+<Note>
+OpenCode is 100% open source and works with multiple LLM providers including Claude, OpenAI, Google, and local models.
+</Note>
+
+## Why OpenCode?
+
+<CardGroup cols={2}>
+  <Card title="Provider Agnostic" icon="arrows-rotate">
+    Not locked into any single provider. Use Claude, OpenAI, Google, or local models. Switch providers anytime.
+  </Card>
+  
+  <Card title="Terminal First" icon="terminal">
+    Built by terminal enthusiasts. Optimized for modern terminals with full keyboard navigation and customization.
+  </Card>
+  
+  <Card title="LSP Support" icon="code">
+    Out-of-the-box Language Server Protocol support provides intelligent code understanding and context.
+  </Card>
+  
+  <Card title="Flexible Architecture" icon="cubes">
+    Client/server design enables remote operation. Run on your machine, control from anywhere.
+  </Card>
+</CardGroup>
+
+## Key Features
+
+### Intelligent Agents
+
+OpenCode includes specialized agents for different tasks:
+
+- **Build Agent** - Full development with all tools enabled
+- **Plan Agent** - Analysis and planning without making changes
+- **General Subagent** - Complex research and parallel tasks
+- **Explore Subagent** - Fast, read-only codebase exploration
+
+Switch between agents with the **Tab** key or invoke them via `@` mentions.
+
+### Powerful Tools
+
+<Steps>
+  <Step title="File Operations">
+    Read, write, and edit files with context-aware assistance. Supports glob patterns and content search.
+  </Step>
+  
+  <Step title="Shell Integration">
+    Execute commands directly through the terminal. Full bash command support.
+  </Step>
+  
+  <Step title="Custom Commands">
+    Create reusable commands for repetitive tasks. Use `/command` syntax to run them instantly.
+  </Step>
+  
+  <Step title="MCP Servers">
+    Extend functionality with Model Context Protocol servers. Connect to databases, APIs, and more.
+  </Step>
+</Steps>
+
+### Collaborative Features
+
+**Share Conversations**: Share your OpenCode sessions with your team using the `/share` command. Conversations are private by default.
+
+**Version Control Integration**: Built-in Git support makes it easy to track changes, create commits, and manage branches.
+
+**Undo/Redo**: Made a mistake? Use `/undo` to revert changes instantly. Redo them with `/redo`.
+
+## Workflow Patterns
+
+### Plan, Review, Build
+
+<Steps>
+  <Step title="Switch to Plan Mode">
+    Press **Tab** to enter Plan mode. Describe your feature or change.
+  </Step>
+  
+  <Step title="Review the Plan">
+    OpenCode creates a detailed implementation plan without touching code.
+  </Step>
+  
+  <Step title="Build It">
+    Press **Tab** again to switch to Build mode. Say "go ahead" to implement.
+  </Step>
+</Steps>
+
+### Ask Questions
+
+Use the `@` key to fuzzy search and reference files:
+
+```txt
+How is authentication handled in @src/auth/index.ts
+```
+
+### Add Features
+
+Provide context and examples for best results:
+
+```txt
+Add a delete confirmation modal. Use the same pattern as @src/modals/ConfirmModal.tsx
+but customize the message and button styles.
+```
+
+### Make Changes
+
+Direct requests work great for straightforward modifications:
+
+```txt
+Update the API endpoint in @config/api.ts to use the production URL
+```
+
+## Customization
+
+<CardGroup cols={3}>
+  <Card title="Themes" icon="palette">
+    Choose from multiple built-in themes or create your own color schemes.
+  </Card>
+  
+  <Card title="Keybinds" icon="keyboard">
+    Customize keyboard shortcuts to match your workflow and muscle memory.
+  </Card>
+  
+  <Card title="Formatters" icon="wand-magic-sparkles">
+    Configure code formatters like Prettier, ESLint, or language-specific tools.
+  </Card>
+</CardGroup>
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Install OpenCode using your preferred package manager
+  </Card>
+  
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get your first session running in under 5 minutes
+  </Card>
+</CardGroup>
+
+<Tip>
+New to AI coding agents? Check out the [Quick Start guide](/quickstart) for a hands-on tutorial.
+</Tip>

@@ -1,0 +1,478 @@
+---
+title: 'Configuration'
+description: 'Configure OpenCode programmatically via the SDK'
+---
+
+## Overview
+
+The SDK allows you to configure OpenCode programmatically. You can pass configuration when creating a server instance, or update it at runtime via the API.
+
+## Initial Configuration
+
+Pass configuration when creating an OpenCode instance:
+
+```typescript
+import { createOpencode } from '@opencode-ai/sdk'
+
+const { client, server } = await createOpencode({
+  config: {
+    model: 'anthropic/claude-3-5-sonnet-20241022',
+    logLevel: 'INFO',
+    theme: 'dark',
+    agent: {
+      build: {
+        model: 'anthropic/claude-3-5-sonnet-20241022',
+        temperature: 0.7,
+      },
+    },
+  },
+})
+```
+
+The configuration is passed via the `OPENCODE_CONFIG_CONTENT` environment variable and merged with any existing `opencode.json` file.
+
+## Runtime Configuration
+
+Update configuration at runtime:
+
+```typescript
+// Get current configuration
+const config = await client.config.get()
+console.log(config.data.model)
+
+// Update configuration
+await client.config.update({
+  body: {
+    model: 'anthropic/claude-3-5-sonnet-20241022',
+    logLevel: 'DEBUG',
+  },
+})
+```
+
+## Configuration Options
+
+### Model Selection
+
+<ParamField path="model" type="string">
+  Default model to use (format: `provider/model`)
+  
+  ```typescript
+  config: {
+    model: 'anthropic/claude-3-5-sonnet-20241022'
+  }
+  ```
+</ParamField>
+
+<ParamField path="small_model" type="string">
+  Small model for tasks like title generation
+  
+  ```typescript
+  config: {
+    small_model: 'anthropic/claude-3-haiku-20240307'
+  }
+  ```
+</ParamField>
+
+### Logging
+
+<ParamField path="logLevel" type="'DEBUG' | 'INFO' | 'WARN' | 'ERROR'" default="INFO">
+  Log level for server output
+  
+  ```typescript
+  config: {
+    logLevel: 'DEBUG'
+  }
+  ```
+</ParamField>
+
+### Agent Configuration
+
+<ParamField path="agent" type="Record<string, AgentConfig>">
+  Configure individual agents
+  
+  ```typescript
+  config: {
+    agent: {
+      build: {
+        model: 'anthropic/claude-3-5-sonnet-20241022',
+        temperature: 0.7,
+        maxSteps: 20,
+        permission: {
+          edit: 'allow',
+          bash: 'ask',
+        },
+      },
+      plan: {
+        model: 'anthropic/claude-3-opus-20240229',
+        temperature: 0.5,
+      },
+    },
+  }
+  ```
+</ParamField>
+
+#### AgentConfig Properties
+
+<ParamField path="model" type="string">
+  Model for this agent (overrides global model)
+</ParamField>
+
+<ParamField path="temperature" type="number">
+  Temperature for model sampling (0-1)
+</ParamField>
+
+<ParamField path="top_p" type="number">
+  Top-p sampling parameter
+</ParamField>
+
+<ParamField path="maxSteps" type="number">
+  Maximum agentic iterations before forcing text-only response
+</ParamField>
+
+<ParamField path="description" type="string">
+  Description of when to use this agent
+</ParamField>
+
+<ParamField path="mode" type="'subagent' | 'primary' | 'all'" default="all">
+  When this agent is available
+</ParamField>
+
+<ParamField path="color" type="string">
+  Hex color code for the agent (e.g., `#FF5733`)
+</ParamField>
+
+<ParamField path="prompt" type="string">
+  Custom system prompt for this agent
+</ParamField>
+
+<ParamField path="tools" type="Record<string, boolean>">
+  Enable/disable specific tools
+  
+  ```typescript
+  tools: {
+    bash: true,
+    webfetch: false,
+  }
+  ```
+</ParamField>
+
+<ParamField path="permission" type="PermissionConfig">
+  Permission settings
+  
+  ```typescript
+  permission: {
+    edit: 'allow',      // File editing
+    bash: 'ask',        // Shell commands
+    webfetch: 'allow',  // Web fetching
+    doom_loop: 'deny',  // Prevent infinite loops
+  }
+  ```
+  
+  Values: `'ask'` | `'allow'` | `'deny'`
+</ParamField>
+
+### Provider Configuration
+
+<ParamField path="provider" type="Record<string, ProviderConfig>">
+  Configure custom providers or override defaults
+  
+  ```typescript
+  config: {
+    provider: {
+      anthropic: {
+        options: {
+          apiKey: 'your-api-key',
+          baseURL: 'https://api.anthropic.com',
+        },
+      },
+      custom: {
+        api: 'https://api.example.com',
+        name: 'Custom Provider',
+        models: {
+          'my-model': {
+            id: 'my-model-id',
+            name: 'My Model',
+            cost: { input: 0.01, output: 0.03 },
+            limit: { context: 128000, output: 4096 },
+          },
+        },
+      },
+    },
+  }
+  ```
+</ParamField>
+
+### MCP Servers
+
+<ParamField path="mcp" type="Record<string, McpConfig>">
+  Configure Model Context Protocol servers
+  
+  ```typescript
+  config: {
+    mcp: {
+      filesystem: {
+        type: 'local',
+        command: ['npx', '-y', '@modelcontextprotocol/server-filesystem', '/path'],
+        enabled: true,
+      },
+      github: {
+        type: 'remote',
+        url: 'https://mcp.example.com',
+        enabled: true,
+      },
+    },
+  }
+  ```
+</ParamField>
+
+### Commands
+
+<ParamField path="command" type="Record<string, CommandConfig>">
+  Define custom commands
+  
+  ```typescript
+  config: {
+    command: {
+      review: {
+        template: 'Review the code in {{0}} for issues',
+        description: 'Code review',
+        agent: 'build',
+      },
+      test: {
+        template: 'Write tests for {{0}}',
+        description: 'Generate tests',
+        subtask: true,
+      },
+    },
+  }
+  ```
+</ParamField>
+
+### Plugins
+
+<ParamField path="plugin" type="string[]">
+  Load custom plugins
+  
+  ```typescript
+  config: {
+    plugin: [
+      './plugins/custom-tool.ts',
+      '@company/opencode-plugin',
+    ],
+  }
+  ```
+</ParamField>
+
+### TUI Settings
+
+<ParamField path="tui" type="TuiConfig">
+  Terminal UI settings
+  
+  ```typescript
+  config: {
+    tui: {
+      scroll_speed: 3,
+      scroll_acceleration: { enabled: true },
+      diff_style: 'auto',
+    },
+  }
+  ```
+</ParamField>
+
+<ParamField path="theme" type="string">
+  Theme name
+  
+  ```typescript
+  config: {
+    theme: 'dark'
+  }
+  ```
+</ParamField>
+
+### Sharing
+
+<ParamField path="share" type="'manual' | 'auto' | 'disabled'" default="manual">
+  Session sharing behavior
+  
+  ```typescript
+  config: {
+    share: 'auto'  // Auto-share all sessions
+  }
+  ```
+</ParamField>
+
+### Other Options
+
+<ParamField path="username" type="string">
+  Custom username for display
+</ParamField>
+
+<ParamField path="snapshot" type="boolean">
+  Enable/disable snapshots
+</ParamField>
+
+<ParamField path="autoupdate" type="boolean | 'notify'">
+  Auto-update behavior
+</ParamField>
+
+<ParamField path="instructions" type="string[]">
+  Additional instruction files to include
+  
+  ```typescript
+  config: {
+    instructions: ['STYLE_GUIDE.md', '.cursorrules']
+  }
+  ```
+</ParamField>
+
+<ParamField path="tools" type="Record<string, boolean>">
+  Global tool enable/disable
+  
+  ```typescript
+  config: {
+    tools: {
+      bash: true,
+      webfetch: true,
+    },
+  }
+  ```
+</ParamField>
+
+<ParamField path="permission" type="PermissionConfig">
+  Global permission settings (can be overridden per agent)
+</ParamField>
+
+## Examples
+
+### Development Configuration
+
+```typescript
+const { client, server } = await createOpencode({
+  config: {
+    logLevel: 'DEBUG',
+    model: 'anthropic/claude-3-5-sonnet-20241022',
+    agent: {
+      build: {
+        permission: {
+          edit: 'allow',
+          bash: 'allow',
+        },
+      },
+    },
+  },
+})
+```
+
+### Production Configuration
+
+```typescript
+const { client, server } = await createOpencode({
+  config: {
+    logLevel: 'ERROR',
+    model: 'anthropic/claude-3-5-sonnet-20241022',
+    share: 'disabled',
+    permission: {
+      edit: 'ask',
+      bash: 'ask',
+      webfetch: 'ask',
+    },
+  },
+})
+```
+
+### Custom Provider
+
+```typescript
+const { client, server } = await createOpencode({
+  config: {
+    provider: {
+      'my-provider': {
+        api: 'https://api.example.com/v1',
+        name: 'My Provider',
+        options: {
+          apiKey: process.env.API_KEY,
+        },
+        models: {
+          'my-model': {
+            id: 'my-model-v1',
+            name: 'My Custom Model',
+            cost: { input: 0.01, output: 0.03 },
+            limit: { context: 100000, output: 4096 },
+          },
+        },
+      },
+    },
+    model: 'my-provider/my-model',
+  },
+})
+```
+
+### Multi-Agent Setup
+
+```typescript
+const { client, server } = await createOpencode({
+  config: {
+    agent: {
+      architect: {
+        model: 'anthropic/claude-3-opus-20240229',
+        description: 'High-level architecture and design',
+        temperature: 0.3,
+        mode: 'primary',
+      },
+      builder: {
+        model: 'anthropic/claude-3-5-sonnet-20241022',
+        description: 'Implementation and coding',
+        temperature: 0.7,
+        mode: 'all',
+        permission: {
+          edit: 'allow',
+          bash: 'ask',
+        },
+      },
+      tester: {
+        model: 'anthropic/claude-3-5-sonnet-20241022',
+        description: 'Testing and validation',
+        temperature: 0.5,
+        mode: 'subagent',
+      },
+    },
+  },
+})
+```
+
+## Getting Provider Information
+
+Retrieve information about available providers and models:
+
+```typescript
+// List all providers and their default models
+const info = await client.config.providers()
+
+console.log('Available providers:')
+for (const provider of info.data.providers) {
+  console.log(`- ${provider.name} (${provider.id})`)
+  console.log(`  Models: ${Object.keys(provider.models).length}`)
+}
+
+console.log('\nDefaults:', info.data.default)
+```
+
+## Type Safety
+
+All configuration is fully typed:
+
+```typescript
+import type { Config, AgentConfig } from '@opencode-ai/sdk'
+
+const config: Config = {
+  model: 'anthropic/claude-3-5-sonnet-20241022',
+  agent: {
+    build: {
+      temperature: 0.7,
+      maxSteps: 20,
+    } satisfies AgentConfig,
+  },
+}
+
+const { client, server } = await createOpencode({ config })
+```

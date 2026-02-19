@@ -1,0 +1,312 @@
+---
+title: "models"
+description: "List all available models from configured providers"
+---
+
+## Overview
+
+The `models` command displays all AI models available from your configured providers. Use this to:
+
+- Discover available models
+- Find exact model names for configuration
+- Filter models by provider
+- View model metadata and pricing
+
+## Usage
+
+```bash
+opencode models [provider]
+```
+
+Models are displayed in the format `provider/model`, which is the format used in [configuration files](/config) and the `--model` flag.
+
+## Options
+
+<ParamField path="provider" type="string">
+  Optional provider ID to filter models. Only shows models from this provider.
+</ParamField>
+
+<ParamField path="--refresh" type="flag">
+  Refresh the models cache from models.dev. Use this when new models are released.
+</ParamField>
+
+<ParamField path="--verbose" type="flag">
+  Show detailed model information including pricing, context windows, and capabilities.
+</ParamField>
+
+## Examples
+
+### List All Models
+
+Show models from all configured providers:
+
+```bash
+opencode models
+```
+
+Output:
+```
+anthropic/claude-4.5-sonnet
+anthropic/claude-4.0-opus
+anthropic/claude-3.5-sonnet
+anthropic/claude-3-haiku
+openai/gpt-4o
+openai/gpt-4-turbo
+openai/gpt-3.5-turbo
+opencode/claude-max
+opencode/gpt-plus
+...
+```
+
+### Filter by Provider
+
+Show only Anthropic models:
+
+```bash
+opencode models anthropic
+```
+
+Output:
+```
+anthropic/claude-4.5-sonnet
+anthropic/claude-4.0-opus
+anthropic/claude-3.5-sonnet
+anthropic/claude-3-haiku
+```
+
+### Show Detailed Information
+
+View model metadata:
+
+```bash
+opencode models anthropic --verbose
+```
+
+Output:
+```json
+anthropic/claude-4.5-sonnet
+{
+  "id": "claude-4.5-sonnet",
+  "name": "Claude 4.5 Sonnet",
+  "contextWindow": 200000,
+  "maxTokens": 8192,
+  "pricing": {
+    "input": 0.003,
+    "output": 0.015
+  },
+  "capabilities": ["vision", "function-calling", "streaming"]
+}
+```
+
+### Refresh Model Cache
+
+Update the cached model list from models.dev:
+
+```bash
+opencode models --refresh
+```
+
+This fetches the latest model information and is useful when:
+- New models are released
+- Model pricing changes
+- You add a new provider
+
+## Model Format
+
+All models follow the `provider/model` format:
+
+```
+provider/model
+   │       │
+   │       └─ Model ID within provider
+   └─────────Provider ID from models.dev
+```
+
+Examples:
+- `anthropic/claude-4.5-sonnet`
+- `openai/gpt-4o`
+- `google/gemini-2.0-flash-exp`
+- `opencode/claude-max`
+
+## Using Model Names
+
+### In Configuration
+
+Set default model in `opencode.json`:
+
+```json
+{
+  "model": "anthropic/claude-4.5-sonnet"
+}
+```
+
+### With CLI Flags
+
+Specify model when starting OpenCode:
+
+```bash
+opencode --model anthropic/claude-4.5-sonnet
+```
+
+Or with the run command:
+
+```bash
+opencode run --model openai/gpt-4o "Explain recursion"
+```
+
+### Model Switching
+
+Switch models mid-session using the `/model` command:
+
+```
+/model anthropic/claude-4.5-sonnet
+```
+
+## Provider Order
+
+Models are displayed in a specific order:
+
+1. **OpenCode providers** (e.g., `opencode/claude-max`) - shown first
+2. **Other providers** - alphabetically by provider ID
+
+Within each provider, models are alphabetically sorted.
+
+## Model Information
+
+With `--verbose`, you can see:
+
+- **Context window**: Maximum input tokens
+- **Max tokens**: Maximum output tokens
+- **Pricing**: Input and output costs per 1K tokens
+- **Capabilities**: Features like vision, function calling, streaming
+- **Modalities**: Supported input/output types
+
+## Understanding Provider IDs
+
+Common provider IDs:
+
+| Provider | ID | Authentication |
+| --- | --- | --- |
+| OpenCode | `opencode` | OpenCode API key |
+| Anthropic | `anthropic` | Claude API key |
+| OpenAI | `openai` | OpenAI API key |
+| Google | `google` | Google AI API key |
+| GitHub Copilot | `github-copilot` | GitHub Copilot subscription |
+| OpenRouter | `openrouter` | OpenRouter API key |
+| Vercel | `vercel` | Vercel API key |
+| Amazon Bedrock | `amazon-bedrock` | AWS credentials |
+
+## Models.dev
+
+OpenCode uses [models.dev](https://models.dev) as the central registry for AI models. This provides:
+
+- Unified model metadata
+- Up-to-date pricing information
+- Capability and feature information
+- Support for 50+ providers
+
+### Cache Management
+
+Model information is cached locally for performance. The cache:
+
+- Updates automatically on first run each day
+- Can be manually refreshed with `--refresh`
+- Is stored in `~/.local/share/opencode/models.json`
+
+## Provider Configuration
+
+Before using models from a provider, you must authenticate:
+
+```bash
+# Add authentication for a provider
+opencode auth login
+
+# Select provider and enter credentials
+# Then list models from that provider
+opencode models <provider-id>
+```
+
+See the [auth command](/cli/auth) for authentication details.
+
+## Filtering and Searching
+
+While the command doesn't have built-in search, you can use standard Unix tools:
+
+### Search by Name
+
+```bash
+opencode models | grep claude
+opencode models | grep -i gpt
+```
+
+### Count Models
+
+```bash
+opencode models | wc -l
+opencode models anthropic | wc -l
+```
+
+### Show Specific Range
+
+```bash
+opencode models | head -10
+opencode models | tail -20
+```
+
+## Troubleshooting
+
+### No Models Shown
+
+**Problem**: Command returns empty or shows no models
+
+**Solutions**:
+- Run `opencode models --refresh` to update cache
+- Check internet connectivity
+- Verify you've authenticated with `opencode auth login`
+- Check provider is enabled in config
+
+### Provider Not Found
+
+**Problem**: `Provider not found: <provider>`
+
+**Solutions**:
+- Check provider ID spelling
+- Run `opencode models` without arguments to see available providers
+- Ensure provider is configured in `opencode.json`
+- Authenticate with the provider: `opencode auth login`
+
+### Models Out of Date
+
+**Problem**: New models missing from list
+
+**Solutions**:
+- Run `opencode models --refresh`
+- Check [models.dev](https://models.dev) for latest models
+- Verify OpenCode is up to date: `opencode upgrade`
+
+## Environment Variables
+
+The models command respects these environment variables:
+
+| Variable | Description |
+| --- | --- |
+| `OPENCODE_DISABLE_MODELS_FETCH` | Disable fetching models from remote sources |
+| `OPENCODE_MODELS_URL` | Custom URL for fetching model configuration |
+| `OPENCODE_ENABLE_EXPERIMENTAL_MODELS` | Show experimental/beta models |
+
+## Related Commands
+
+<CardGroup cols={2}>
+  <Card title="auth" icon="key" href="/cli/auth">
+    Authenticate with model providers
+  </Card>
+  <Card title="Configuration" icon="gear" href="/config">
+    Configure default models
+  </Card>
+  <Card title="Providers" icon="plug" href="/providers">
+    Learn about available providers
+  </Card>
+  <Card title="TUI" icon="terminal" href="/tui">
+    Using models in the interface
+  </Card>
+</CardGroup>

@@ -1,0 +1,393 @@
+---
+title: "/share - Share Sessions"
+description: "Create shareable links to your OpenCode conversations"
+---
+
+## Overview
+
+The `/share` command creates a public URL for your OpenCode session that others can view. This allows you to:
+
+- Share conversations with teammates
+- Get help by showing your session
+- Document problem-solving workflows
+- Create tutorials and examples
+- Collaborate on code reviews
+
+## Usage
+
+```
+/share
+```
+
+The command generates a shareable URL:
+
+```
+https://opncd.ai/s/abc123def456
+```
+
+## What Gets Shared
+
+Shared sessions include:
+
+- **Full conversation** - All messages and responses
+- **Tool executions** - Commands run and outputs
+- **File contexts** - Code and files referenced
+- **Metadata** - Model, agent, timestamps
+
+<Warning>
+  Shared sessions are **public**. Anyone with the link can view the content. Don't share sensitive information.
+</Warning>
+
+## Viewing Shared Sessions
+
+Recipients can:
+
+1. **Open in browser** - View the conversation
+2. **Copy messages** - Extract code or content
+3. **See tool outputs** - Understand what was executed
+4. **Import session** - Load into their OpenCode
+
+### Import a Shared Session
+
+Anyone can import a shared session:
+
+```bash
+opencode import https://opncd.ai/s/abc123def456
+```
+
+This creates a local copy they can continue working with.
+
+## Automatic Sharing
+
+Enable automatic sharing for all sessions:
+
+### Via Environment Variable
+
+```bash
+export OPENCODE_AUTO_SHARE=true
+opencode
+```
+
+### Via Configuration
+
+In `opencode.json`:
+
+```json
+{
+  "share": "auto"
+}
+```
+
+### Via CLI Flag
+
+With the `run` command:
+
+```bash
+opencode run --share "Fix the bug in app.ts"
+```
+
+With auto-share enabled, every session is shared automatically and the URL is displayed:
+
+```
+~ https://opncd.ai/s/abc123def456
+```
+
+## Disabling Sharing
+
+To prevent sharing in your organization or workspace:
+
+### Via Configuration
+
+```json
+{
+  "share": "disabled"
+}
+```
+
+With sharing disabled:
+
+```
+User: /share
+Assistant: ! Sharing is disabled in this workspace
+```
+
+### Per-Session Control
+
+Sharing can be controlled per session:
+
+```json
+{
+  "share": "manual"  // Default, requires /share command
+}
+```
+
+Options:
+- `"auto"` - Share all sessions automatically
+- `"manual"` - Share only when `/share` is used (default)
+- `"disabled"` - Prevent all sharing
+
+## Privacy Considerations
+
+<Warning>
+  Shared sessions are **publicly accessible**. Review content before sharing.
+</Warning>
+
+### What NOT to Share
+
+Avoid sharing sessions containing:
+
+- API keys or credentials
+- Private code or intellectual property
+- Personal information (PII)
+- Internal URLs or infrastructure details
+- Confidential business logic
+- Security vulnerabilities (before they're fixed)
+
+### Redacting Sensitive Data
+
+Before sharing:
+
+1. Review the full conversation
+2. Undo messages with sensitive content
+3. Fork the session and remove sensitive parts
+4. Use environment variables instead of hardcoded secrets
+
+### Revoking Shared Sessions
+
+Currently, shared sessions cannot be deleted after creation. Be cautious about what you share.
+
+<Note>
+  Future versions may support revoking or editing shared sessions.
+</Note>
+
+## Use Cases
+
+### Getting Help
+
+Share your session when asking for help:
+
+```
+User: /share
+User: [copies link]
+
+# In Slack/Discord:
+"I'm stuck on this error. Here's my OpenCode session: https://opncd.ai/s/..."
+```
+
+### Code Review
+
+Share a session showing your problem-solving process:
+
+```
+User: /share
+User: "Created PR #123. Here's how we solved it: https://opncd.ai/s/..."
+```
+
+### Documentation
+
+Create tutorials by sharing instructional sessions:
+
+```
+User: /share
+User: "Tutorial on setting up authentication: https://opncd.ai/s/..."
+```
+
+### Bug Reports
+
+Include session links in bug reports:
+
+```markdown
+## Bug Report
+
+**Description**: API endpoint returns 500 error
+
+**Session**: https://opncd.ai/s/abc123def456
+
+OpenCode helped me identify the issue is in the middleware...
+```
+
+### Team Collaboration
+
+Share sessions for pair programming:
+
+```
+User: /share
+
+# Team member imports and continues:
+opencode import https://opncd.ai/s/abc123def456
+```
+
+## Programmatic Sharing
+
+Share sessions via the API:
+
+```typescript
+import { createOpencodeClient } from '@opencode-ai/sdk/v2'
+
+const client = createOpencodeClient({
+  baseUrl: 'http://localhost:4096'
+})
+
+const result = await client.session.share({
+  sessionID: 'session-id'
+})
+
+console.log(result.data.share.url)
+// https://opncd.ai/s/abc123def456
+```
+
+## Share URL Format
+
+Share URLs follow this pattern:
+
+```
+https://opncd.ai/s/<slug>
+              │   │
+              │   └─ Unique session identifier
+              └───── Share path
+```
+
+The slug is:
+- Unique per session
+- URL-safe (alphanumeric + hyphens)
+- Permanent (doesn't expire)
+
+## Import Command
+
+Import shared sessions locally:
+
+```bash
+# From URL
+opencode import https://opncd.ai/s/abc123def456
+
+# Or just the slug
+opencode import abc123def456
+```
+
+This:
+1. Downloads the session data
+2. Creates a local session
+3. Preserves all messages and context
+4. Allows you to continue the conversation
+
+### Import Options
+
+You can also import from files:
+
+```bash
+# From local JSON file
+opencode import session.json
+
+# From another session export
+opencode export <session-id> > backup.json
+opencode import backup.json
+```
+
+## Export vs Share
+
+| Feature | /share | export |
+| --- | --- | --- |
+| Creates public URL | ✓ | ✗ |
+| Exports to file | ✗ | ✓ |
+| Requires internet | ✓ | ✗ |
+| Public access | ✓ | ✗ |
+| Local backup | ✗ | ✓ |
+
+Use `/share` for collaboration, `export` for backups.
+
+## Troubleshooting
+
+### Sharing Failed
+
+**Problem**: Cannot create share link
+
+**Solutions**:
+- Check internet connectivity
+- Verify sharing isn't disabled in config
+- Ensure OpenCode can reach `opncd.ai`
+- Check firewall/proxy settings
+
+### Sharing Disabled
+
+**Problem**: `Sharing is disabled` error
+
+**Solutions**:
+- Check `opencode.json` for `"share": "disabled"`
+- Remove or change to `"manual"` or `"auto"`
+- Contact workspace admin if in enterprise
+
+### Cannot Access Shared Link
+
+**Problem**: Link shows 404 or error
+
+**Solutions**:
+- Verify the URL is complete and correct
+- Check internet connectivity
+- Try opening in incognito/private mode
+- The share service may be temporarily down
+
+### Import Failed
+
+**Problem**: Cannot import shared session
+
+**Solutions**:
+- Verify the URL is valid
+- Check internet connectivity
+- Ensure you have disk space
+- Try importing to a different directory
+
+## Enterprise Considerations
+
+For organizations:
+
+### Disable Public Sharing
+
+Completely disable sharing:
+
+```json
+{
+  "share": "disabled"
+}
+```
+
+### Self-Hosted Sharing
+
+Set up internal sharing service:
+
+```json
+{
+  "share": {
+    "url": "https://opencode-share.internal.company.com",
+    "enabled": true
+  }
+}
+```
+
+### Audit Trail
+
+Log all share events:
+
+```json
+{
+  "audit": {
+    "share": true
+  }
+}
+```
+
+## Related Topics
+
+<CardGroup cols={2}>
+  <Card title="import" icon="download" href="/cli/commands/import">
+    Import shared sessions
+  </Card>
+  <Card title="export" icon="file-export" href="/cli/commands/export">
+    Export sessions to files
+  </Card>
+  <Card title="Sessions" icon="clock" href="/cli/commands/init">
+    Managing sessions
+  </Card>
+  <Card title="Share Config" icon="gear" href="/share">
+    Configure sharing behavior
+  </Card>
+</CardGroup>

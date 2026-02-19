@@ -1,0 +1,419 @@
+---
+title: "ACP (Agent Client Protocol)"
+description: "Use OpenCode in any ACP-compatible editor via the Agent Client Protocol"
+---
+
+OpenCode supports the [Agent Client Protocol](https://agentclientprotocol.com) (ACP), allowing you to use it directly in compatible editors and IDEs. ACP is an open protocol that standardizes communication between code editors and AI coding agents.
+
+<Tip>
+For a list of editors and tools that support ACP, check out the [ACP progress report](https://zed.dev/blog/acp-progress-report#available-now).
+</Tip>
+
+---
+
+## What is ACP?
+
+The Agent Client Protocol is an open standard for connecting AI coding agents to code editors. It enables:
+
+- **Editor Integration** - Use OpenCode directly within your favorite editor
+- **Unified Experience** - Consistent AI assistance across different development environments
+- **Tool Interoperability** - Switch between different agents and editors seamlessly
+- **Native UI** - Agents appear as native features in your editor's interface
+
+OpenCode's ACP implementation provides full feature parity with the standalone TUI and web interfaces.
+
+---
+
+## Configuration
+
+To use OpenCode via ACP, configure your editor to run the `opencode acp` command. The command starts OpenCode as an ACP-compatible subprocess that communicates with your editor over JSON-RPC via stdio.
+
+---
+
+## Supported Editors
+
+### Zed
+
+Add to your [Zed](https://zed.dev) settings (`~/.config/zed/settings.json`):
+
+```json
+{
+  "agent_servers": {
+    "OpenCode": {
+      "command": "opencode",
+      "args": ["acp"]
+    }
+  }
+}
+```
+
+To open OpenCode in Zed:
+
+1. Open the Command Palette (`Cmd+Shift+P` or `Ctrl+Shift+P`)
+2. Search for "agent: new thread"
+3. Select the command to start a new OpenCode thread
+
+#### Custom Keyboard Shortcut
+
+Bind a keyboard shortcut by editing your `keymap.json`:
+
+```json
+[
+  {
+    "bindings": {
+      "cmd-alt-o": [
+        "agent::NewExternalAgentThread",
+        {
+          "agent": {
+            "custom": {
+              "name": "OpenCode",
+              "command": {
+                "command": "opencode",
+                "args": ["acp"]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+]
+```
+
+Now press `Cmd+Alt+O` (macOS) or `Ctrl+Alt+O` (Linux/Windows) to start OpenCode.
+
+---
+
+### JetBrains IDEs
+
+Add to your [JetBrains IDE](https://www.jetbrains.com/) `acp.json` according to the [documentation](https://www.jetbrains.com/help/ai-assistant/acp.html):
+
+```json
+{
+  "agent_servers": {
+    "OpenCode": {
+      "command": "/absolute/path/bin/opencode",
+      "args": ["acp"]
+    }
+  }
+}
+```
+
+<Note>
+JetBrains requires an absolute path to the OpenCode binary. Use `which opencode` on Linux/macOS or `where opencode` on Windows to find the path.
+</Note>
+
+To use OpenCode:
+
+1. Open the AI Chat panel
+2. Select "OpenCode" from the agent selector
+3. Start chatting with OpenCode directly in your IDE
+
+---
+
+### Avante.nvim
+
+Add to your [Avante.nvim](https://github.com/yetone/avante.nvim) configuration:
+
+```lua
+{
+  acp_providers = {
+    ["opencode"] = {
+      command = "opencode",
+      args = { "acp" }
+    }
+  }
+}
+```
+
+#### With Environment Variables
+
+If you need to pass environment variables:
+
+```lua
+{
+  acp_providers = {
+    ["opencode"] = {
+      command = "opencode",
+      args = { "acp" },
+      env = {
+        OPENCODE_API_KEY = os.getenv("OPENCODE_API_KEY")
+      }
+    }
+  }
+}
+```
+
+---
+
+### CodeCompanion.nvim
+
+To use OpenCode as an ACP agent in [CodeCompanion.nvim](https://github.com/olimorris/codecompanion.nvim):
+
+```lua
+require("codecompanion").setup({
+  interactions = {
+    chat = {
+      adapter = {
+        name = "opencode",
+        model = "claude-sonnet-4",
+      },
+    },
+  },
+})
+```
+
+This configuration sets up CodeCompanion to use OpenCode as the ACP agent for chat interactions.
+
+<Note>
+For environment variables like `OPENCODE_API_KEY`, refer to [Configuring Adapters: Environment Variables](https://codecompanion.olimorris.dev/getting-started#setting-an-api-key) in the CodeCompanion.nvim documentation.
+</Note>
+
+---
+
+## Features and Capabilities
+
+OpenCode via ACP provides comprehensive feature support:
+
+### Core Features
+
+- **Full Tool Access** - All built-in OpenCode tools (file operations, bash commands, etc.)
+- **Custom Tools** - Custom tools and slash commands from your configuration
+- **MCP Servers** - Model Context Protocol servers configured in your OpenCode config
+- **Project Rules** - Project-specific instructions from `AGENTS.md` files
+- **Formatters and Linters** - Custom code formatters and linters
+- **Agents** - Multiple agent modes with different capabilities
+- **Permissions** - Fine-grained permission system for tool execution
+
+### Session Management
+
+- **Create Sessions** - Start new coding sessions
+- **Resume Sessions** - Continue previous conversations
+- **Fork Sessions** - Branch off from existing sessions to explore alternatives
+- **List Sessions** - View and switch between all your sessions
+
+### Model Selection
+
+- **Multiple Models** - Access all models from your configured providers
+- **Model Switching** - Change models mid-session
+- **Model Variants** - Use extended thinking and other model variants
+
+### Context and Tools
+
+- **File Context** - Add files and code to the conversation
+- **Image Support** - Send images for vision model analysis
+- **Resource Links** - Reference external resources and documentation
+- **Command Execution** - Run shell commands and see output
+
+### Real-time Updates
+
+- **Streaming Responses** - See AI responses as they're generated
+- **Tool Progress** - Watch tool execution in real-time
+- **Permission Requests** - Approve or deny tool usage interactively
+- **Thinking Display** - View extended reasoning for supported models
+
+### Collaboration
+
+- **Session Sharing** - Share sessions with team members
+- **Export** - Export conversations to Markdown
+- **Comments** - Add inline comments to code sections
+
+---
+
+## Authentication
+
+When using OpenCode via ACP, authentication is handled through the terminal:
+
+```bash
+opencode auth login
+```
+
+Some editors with terminal-auth capability will automatically prompt you to run this command when authentication is needed.
+
+---
+
+## Permissions
+
+OpenCode's permission system works seamlessly through ACP. When OpenCode needs to execute a tool, your editor will display a permission dialog with options:
+
+- **Allow Once** - Execute this tool call only
+- **Always Allow** - Execute this tool and automatically approve future calls
+- **Reject** - Deny execution
+
+Permissions are respected across all interfaces, so approvals in your editor apply to the TUI and web interface as well.
+
+---
+
+## Advanced Configuration
+
+### Custom Working Directory
+
+OpenCode respects the working directory set by your editor. ACP automatically provides the correct `cwd` for each session.
+
+### MCP Server Configuration
+
+MCP servers configured in your `opencode.json` are automatically available when using ACP:
+
+```json
+{
+  "mcp": {
+    "my-server": {
+      "type": "local",
+      "command": ["node", "server.js"],
+      "environment": {
+        "API_KEY": "your-key"
+      }
+    }
+  }
+}
+```
+
+### Custom Commands
+
+Slash commands defined in your configuration work through ACP:
+
+```json
+{
+  "commands": {
+    "build": {
+      "description": "Run the build",
+      "command": "npm run build"
+    }
+  }
+}
+```
+
+Use `/build` in your editor's OpenCode interface to execute the command.
+
+---
+
+## Limitations
+
+<Note>
+Some built-in slash commands like `/undo` and `/redo` are currently unsupported via ACP. These commands rely on Git operations that are better handled through your editor's native version control.
+</Note>
+
+### Editor-Specific Limitations
+
+Different editors may have varying levels of ACP support:
+
+- Some editors may not display reasoning/thinking blocks
+- Permission UI may vary between editors
+- File diff presentation depends on editor capabilities
+
+Check your editor's ACP documentation for specific feature support.
+
+---
+
+## Troubleshooting
+
+### OpenCode Command Not Found
+
+If your editor can't find the `opencode` command:
+
+1. Ensure OpenCode is installed and in your PATH
+2. Use the absolute path in the configuration:
+   ```json
+   {
+     "command": "/usr/local/bin/opencode",
+     "args": ["acp"]
+   }
+   ```
+3. Restart your editor after installation
+
+### Authentication Errors
+
+If you see authentication errors:
+
+1. Run `opencode auth login` in your terminal
+2. Verify your credentials are valid
+3. Check that API keys are properly configured
+4. Restart your editor after authentication
+
+### Connection Issues
+
+If the ACP connection fails:
+
+1. Check that OpenCode is properly installed
+2. Run `opencode acp` manually to verify it works
+3. Check editor logs for error messages
+4. Ensure no firewall or security software is blocking the process
+
+### Performance Issues
+
+If responses are slow:
+
+1. Use `/compact` to reduce session context
+2. Start fresh sessions for new tasks
+3. Check your network connection if using remote models
+4. Monitor token usage and context limits
+
+---
+
+## Comparison with TUI and Web
+
+| Feature | ACP | TUI | Web |
+|---------|-----|-----|-----|
+| File editing | Via editor | Terminal | Built-in editor |
+| Diff viewing | Editor's diff viewer | Terminal output | Visual diff panel |
+| Session management | Yes | Yes | Yes |
+| Keyboard shortcuts | Editor-dependent | Full support | Full support |
+| Multi-window | Editor-dependent | Single terminal | Multiple windows |
+| Mobile support | No | Terminal apps | Yes |
+| File tree | Editor's file tree | No | Built-in tree |
+| Terminal | Editor's terminal | Native | Integrated panel |
+
+Choose the interface that best fits your workflow:
+
+- **ACP** - For integrated editor experience
+- **TUI** - For keyboard-driven terminal workflows  
+- **Web** - For visual file browsing and collaboration
+
+---
+
+## Best Practices
+
+### Session Organization
+
+Keep sessions focused on specific tasks:
+
+- Create separate sessions for different features
+- Use descriptive session names (via `/rename` if supported)
+- Fork sessions when exploring alternatives
+
+### Context Management
+
+Manage conversation context effectively:
+
+- Add only relevant files to context
+- Use `/compact` to summarize long conversations
+- Start fresh sessions for unrelated work
+
+### Permission Strategy
+
+Develop a permission strategy that balances safety and convenience:
+
+- Review tool calls before approving "Always Allow"
+- Use "Allow Once" for sensitive operations
+- Configure auto-approve for safe, repetitive tools
+
+### Model Selection
+
+Choose models appropriate for the task:
+
+- Use extended thinking models for complex problems
+- Switch to faster models for simple tasks
+- Monitor costs with expensive models
+
+---
+
+## Future Development
+
+The ACP protocol is actively evolving. Future improvements may include:
+
+- Enhanced editor integration capabilities
+- Additional tool execution modes
+- Improved real-time collaboration features
+- Extended permission granularity
+
+Stay updated with OpenCode releases and ACP protocol developments for the latest features.

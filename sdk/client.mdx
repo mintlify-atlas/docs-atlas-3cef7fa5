@@ -1,0 +1,421 @@
+---
+title: 'Client API'
+description: 'Create and configure OpenCode clients for programmatic access'
+---
+
+## createOpencode()
+
+Create a complete OpenCode instance with both server and client.
+
+```typescript
+import { createOpencode } from '@opencode-ai/sdk'
+
+const { client, server } = await createOpencode(options)
+```
+
+### Parameters
+
+<ParamField path="options" type="ServerOptions" optional>
+  Server configuration options
+  
+  <Expandable title="ServerOptions properties">
+    <ParamField path="hostname" type="string" default="127.0.0.1">
+      Server hostname to bind to
+    </ParamField>
+    
+    <ParamField path="port" type="number" default="4096">
+      Server port number
+    </ParamField>
+    
+    <ParamField path="signal" type="AbortSignal">
+      Abort signal for cancellation
+    </ParamField>
+    
+    <ParamField path="timeout" type="number" default="5000">
+      Timeout in milliseconds for server startup
+    </ParamField>
+    
+    <ParamField path="config" type="Config">
+      Configuration object (see [Configuration](/sdk/configuration))
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="client" type="OpencodeClient">
+  Type-safe client instance for API calls
+</ResponseField>
+
+<ResponseField name="server" type="object">
+  Server instance with control methods
+  
+  <Expandable title="Server properties">
+    <ResponseField name="url" type="string">
+      Full URL of the running server (e.g., `http://127.0.0.1:4096`)
+    </ResponseField>
+    
+    <ResponseField name="close" type="function">
+      Method to shutdown the server: `server.close()`
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```typescript
+import { createOpencode } from '@opencode-ai/sdk'
+
+const { client, server } = await createOpencode({
+  hostname: '127.0.0.1',
+  port: 4096,
+  timeout: 10000,
+  config: {
+    model: 'anthropic/claude-3-5-sonnet-20241022',
+    logLevel: 'INFO',
+  },
+})
+
+console.log(`Server running at ${server.url}`)
+
+// Use the client
+const health = await client.global.health()
+console.log(`Version: ${health.data.version}`)
+
+// Shutdown when done
+server.close()
+```
+
+### With Abort Signal
+
+```typescript
+const controller = new AbortController()
+
+const { client, server } = await createOpencode({
+  signal: controller.signal,
+  config: { model: 'anthropic/claude-3-5-sonnet-20241022' },
+})
+
+// Abort after 30 seconds
+setTimeout(() => controller.abort(), 30000)
+```
+
+---
+
+## createOpencodeClient()
+
+Create a client to connect to an existing OpenCode server.
+
+```typescript
+import { createOpencodeClient } from '@opencode-ai/sdk'
+
+const client = createOpencodeClient(options)
+```
+
+### Parameters
+
+<ParamField path="options" type="OpencodeClientConfig" optional>
+  Client configuration options
+  
+  <Expandable title="OpencodeClientConfig properties">
+    <ParamField path="baseUrl" type="string" default="http://localhost:4096">
+      URL of the OpenCode server
+    </ParamField>
+    
+    <ParamField path="directory" type="string">
+      Override the working directory for this client. Sets the `x-opencode-directory` header.
+    </ParamField>
+    
+    <ParamField path="fetch" type="function">
+      Custom fetch implementation. Defaults to global `fetch`.
+    </ParamField>
+    
+    <ParamField path="headers" type="Record<string, string>">
+      Custom headers to include with every request
+    </ParamField>
+    
+    <ParamField path="parseAs" type="string" default="auto">
+      Response parsing method: `auto`, `json`, `text`, `blob`, `arrayBuffer`, `stream`
+    </ParamField>
+    
+    <ParamField path="responseStyle" type="string" default="fields">
+      Return style: `data` (returns only data) or `fields` (returns object with data, error, etc.)
+    </ParamField>
+    
+    <ParamField path="throwOnError" type="boolean" default="false">
+      Throw errors instead of returning them in response object
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="client" type="OpencodeClient">
+  Type-safe client instance for making API calls to the server
+</ResponseField>
+
+### Example: Basic Client
+
+```typescript
+import { createOpencodeClient } from '@opencode-ai/sdk'
+
+const client = createOpencodeClient({
+  baseUrl: 'http://localhost:4096',
+})
+
+const sessions = await client.session.list()
+console.log(`Active sessions: ${sessions.data.length}`)
+```
+
+### Example: Custom Headers
+
+```typescript
+const client = createOpencodeClient({
+  baseUrl: 'http://localhost:4096',
+  headers: {
+    'X-Custom-Header': 'value',
+  },
+})
+```
+
+### Example: Override Directory
+
+```typescript
+const client = createOpencodeClient({
+  baseUrl: 'http://localhost:4096',
+  directory: '/path/to/project',
+})
+
+// All operations will use this directory
+const project = await client.project.current()
+```
+
+### Example: Error Handling
+
+```typescript
+// Return errors in response object
+const client = createOpencodeClient({
+  baseUrl: 'http://localhost:4096',
+  throwOnError: false,
+})
+
+const result = await client.session.get({ path: { id: 'invalid' } })
+if (result.error) {
+  console.error('Error:', result.error)
+}
+
+// Or throw errors
+const throwingClient = createOpencodeClient({
+  baseUrl: 'http://localhost:4096',
+  throwOnError: true,
+})
+
+try {
+  await throwingClient.session.get({ path: { id: 'invalid' } })
+} catch (error) {
+  console.error('Error:', error)
+}
+```
+
+---
+
+## createOpencodeTui()
+
+Launch the OpenCode Terminal UI programmatically.
+
+```typescript
+import { createOpencodeTui } from '@opencode-ai/sdk'
+
+const tui = createOpencodeTui(options)
+```
+
+### Parameters
+
+<ParamField path="options" type="TuiOptions" optional>
+  TUI configuration options
+  
+  <Expandable title="TuiOptions properties">
+    <ParamField path="project" type="string">
+      Project directory to open
+    </ParamField>
+    
+    <ParamField path="model" type="string">
+      Model to use (format: `provider/model`)
+    </ParamField>
+    
+    <ParamField path="session" type="string">
+      Session ID to open
+    </ParamField>
+    
+    <ParamField path="agent" type="string">
+      Agent to use (e.g., `build`, `plan`, `general`)
+    </ParamField>
+    
+    <ParamField path="signal" type="AbortSignal">
+      Abort signal for cancellation
+    </ParamField>
+    
+    <ParamField path="config" type="Config">
+      Configuration object
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+### Returns
+
+<ResponseField name="tui" type="object">
+  TUI instance with control methods
+  
+  <Expandable title="TUI properties">
+    <ResponseField name="close" type="function">
+      Method to close the TUI: `tui.close()`
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Example
+
+```typescript
+import { createOpencodeTui } from '@opencode-ai/sdk'
+
+const tui = createOpencodeTui({
+  project: '/path/to/project',
+  model: 'anthropic/claude-3-5-sonnet-20241022',
+  agent: 'build',
+})
+
+// TUI runs in the current terminal
+// Use tui.close() to exit programmatically
+```
+
+---
+
+## Client Namespaces
+
+The client is organized into logical namespaces:
+
+### Global
+
+```typescript
+client.global.health()  // Server health check
+client.global.event()   // Global event stream
+```
+
+### Session
+
+```typescript
+client.session.list()           // List sessions
+client.session.create()         // Create session
+client.session.get()            // Get session
+client.session.update()         // Update session
+client.session.delete()         // Delete session
+client.session.prompt()         // Send prompt
+client.session.command()        // Execute command
+client.session.messages()       // Get messages
+client.session.share()          // Share session
+// ... and more
+```
+
+### Project
+
+```typescript
+client.project.list()    // List projects
+client.project.current() // Get current project
+```
+
+### Config
+
+```typescript
+client.config.get()        // Get configuration
+client.config.update()     // Update configuration
+client.config.providers()  // List providers
+```
+
+### File Operations
+
+```typescript
+client.find.text()     // Search text in files
+client.find.files()    // Find files by name
+client.find.symbols()  // Find workspace symbols
+client.file.read()     // Read file contents
+client.file.status()   // Get file status
+```
+
+### App
+
+```typescript
+client.app.log()      // Write log entry
+client.app.agents()   // List available agents
+```
+
+### TUI Control
+
+```typescript
+client.tui.appendPrompt()    // Append text to prompt
+client.tui.submitPrompt()    // Submit prompt
+client.tui.clearPrompt()     // Clear prompt
+client.tui.showToast()       // Show notification
+client.tui.openSessions()    // Open session selector
+client.tui.openModels()      // Open model selector
+```
+
+### Auth
+
+```typescript
+client.auth.set()  // Set authentication credentials
+```
+
+### Events
+
+```typescript
+client.event.subscribe()  // Subscribe to server-sent events
+```
+
+## Response Format
+
+By default, API calls return an object with the following structure:
+
+```typescript
+interface Response<T> {
+  data: T          // Response data
+  error?: Error    // Error if request failed
+  response: Response  // Raw fetch Response object
+}
+```
+
+### Accessing Data
+
+```typescript
+const result = await client.session.list()
+
+// Access response data
+console.log(result.data) // Session[]
+
+// Check for errors
+if (result.error) {
+  console.error('Failed:', result.error)
+}
+
+// Access raw response
+console.log(result.response.status) // 200
+```
+
+## TypeScript Support
+
+The client is fully typed with TypeScript:
+
+```typescript
+import type { Session, Message, Config } from '@opencode-ai/sdk'
+
+// Types are inferred automatically
+const sessions = await client.session.list()
+// sessions.data is typed as Session[]
+
+const session = await client.session.get({ path: { id: 'abc' } })
+// session.data is typed as Session
+
+const config = await client.config.get()
+// config.data is typed as Config
+```
+
+See the [Types reference](/sdk/types) for all available types.

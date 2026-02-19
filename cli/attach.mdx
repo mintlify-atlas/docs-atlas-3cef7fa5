@@ -1,0 +1,290 @@
+---
+title: "attach"
+description: "Attach terminal to running OpenCode backend server"
+---
+
+## Overview
+
+The `attach` command connects a terminal UI (TUI) to an already running OpenCode backend server started via [`serve`](/cli/serve) or [`web`](/cli/web) commands. This allows you to:
+
+- Use the TUI with a remote OpenCode backend
+- Access the same session from multiple terminals
+- Connect to a server running on another machine
+- Maintain long-running server instances
+
+## Usage
+
+```bash
+opencode attach [url]
+```
+
+If no URL is provided, OpenCode will prompt you to select from recently connected servers or enter a new URL.
+
+## Options
+
+<ParamField path="url" type="string">
+  URL of the running OpenCode server (e.g., `http://localhost:4096` or `http://192.168.1.100:4096`)
+</ParamField>
+
+<ParamField path="--dir" type="string">
+  Working directory to start TUI in. This is the directory context on the remote server.
+</ParamField>
+
+<ParamField path="--session" type="string">
+  Session ID to continue. Short form: `-s`
+</ParamField>
+
+## Examples
+
+### Basic Usage
+
+Start a server in one terminal:
+
+```bash
+# Terminal 1
+opencode serve --port 4096
+```
+
+Attach from another terminal:
+
+```bash
+# Terminal 2
+opencode attach http://localhost:4096
+```
+
+### Remote Server Connection
+
+Connect to OpenCode running on a remote machine:
+
+```bash
+# On remote server (192.168.1.100)
+opencode web --hostname 0.0.0.0 --port 4096
+
+# On local machine
+opencode attach http://192.168.1.100:4096
+```
+
+### Specify Working Directory
+
+Set the working directory context on the remote server:
+
+```bash
+opencode attach http://localhost:4096 --dir /path/to/project
+```
+
+### Continue Specific Session
+
+Attach and continue a specific session:
+
+```bash
+opencode attach http://localhost:4096 --session abc123def456
+```
+
+## Use Cases
+
+### Development Workflow
+
+Maintain a persistent server while working:
+
+```bash
+# Start server once in a tmux/screen session
+opencode serve --port 4096
+
+# Attach from any terminal window as needed
+opencode attach http://localhost:4096
+
+# Detach with Ctrl+C, server keeps running
+```
+
+### Team Collaboration
+
+Multiple team members can attach to the same server:
+
+```bash
+# Team member 1 starts server
+opencode web --hostname 0.0.0.0 --port 4096
+
+# Team member 2 attaches via TUI
+opencode attach http://192.168.1.100:4096
+
+# Team member 3 accesses via browser
+open http://192.168.1.100:4096
+```
+
+### Remote Development
+
+Run OpenCode on a powerful remote machine:
+
+```bash
+# On remote dev server with GPU
+ssh dev-server
+opencode serve --hostname 0.0.0.0 --port 4096
+
+# On local laptop
+opencode attach http://dev-server:4096
+```
+
+### Multiple Projects
+
+Run separate servers for different projects:
+
+```bash
+# Project 1
+opencode serve --port 4096 &
+
+# Project 2
+opencode serve --port 4097 &
+
+# Attach to either project
+opencode attach http://localhost:4096  # Project 1
+opencode attach http://localhost:4097  # Project 2
+```
+
+## Authentication
+
+If the server requires authentication, provide credentials:
+
+```bash
+# Set credentials in environment
+export OPENCODE_SERVER_USERNAME="admin"
+export OPENCODE_SERVER_PASSWORD="your-password"
+
+# Or use URL format (not recommended for scripts)
+opencode attach http://admin:password@localhost:4096
+```
+
+<Warning>
+  Avoid including credentials directly in commands or scripts. Use environment variables instead.
+</Warning>
+
+## Comparison with Other Modes
+
+| Feature | TUI (default) | attach | serve | web |
+| --- | --- | --- | --- | --- |
+| Terminal interface | ✓ | ✓ | ✗ | ✗ |
+| Web interface | ✗ | ✗ | ✗ | ✓ |
+| API access | ✗ | ✓ | ✓ | ✓ |
+| Remote access | ✗ | ✓ | ✓ | ✓ |
+| Multiple clients | ✗ | ✓ | ✓ | ✓ |
+| Background server | ✗ | Required | ✓ | ✓ |
+
+## Detaching
+
+To detach from the server without stopping it:
+
+1. Press `Ctrl+C` in the attached terminal
+2. The TUI session ends
+3. The server continues running
+4. Attach again anytime to resume
+
+To stop the server:
+
+1. Connect to the terminal running `serve` or `web`
+2. Press `Ctrl+C` to stop the server
+3. All attached clients will disconnect
+
+## Session Management
+
+When you attach without specifying a session:
+
+- OpenCode shows you available sessions
+- Select an existing session to continue
+- Or create a new session
+
+To attach to a specific session directly:
+
+```bash
+opencode attach http://localhost:4096 --session <session-id>
+```
+
+## Troubleshooting
+
+### Connection Refused
+
+**Problem**: `Error: connect ECONNREFUSED`
+
+**Solutions**:
+- Verify the server is running
+- Check the URL and port are correct
+- Ensure firewall allows the connection
+- Confirm the server uses `--hostname 0.0.0.0` for network access
+
+### Authentication Failed
+
+**Problem**: `Error: 401 Unauthorized`
+
+**Solutions**:
+- Verify `OPENCODE_SERVER_PASSWORD` matches the server
+- Check `OPENCODE_SERVER_USERNAME` if customized
+- Ensure credentials are set in environment variables
+
+### Session Not Found
+
+**Problem**: Session ID doesn't exist
+
+**Solutions**:
+- Omit `--session` to see available sessions
+- Verify the session ID is correct
+- Check if the session was deleted
+
+### Network Timeout
+
+**Problem**: Connection times out
+
+**Solutions**:
+- Check network connectivity: `ping <server-ip>`
+- Verify server is reachable: `curl http://<server-ip>:<port>`
+- Check firewall rules and network segmentation
+- Try using IP address instead of hostname
+
+## Advanced Configuration
+
+### SSH Tunneling
+
+Securely connect to a remote server over SSH:
+
+```bash
+# Create SSH tunnel
+ssh -L 4096:localhost:4096 user@remote-server
+
+# In another terminal, attach via tunnel
+opencode attach http://localhost:4096
+```
+
+### Reverse Proxy
+
+Use a reverse proxy (nginx, Apache) for TLS and advanced routing:
+
+```nginx
+# nginx config
+location /opencode/ {
+  proxy_pass http://localhost:4096/;
+  proxy_http_version 1.1;
+  proxy_set_header Upgrade $http_upgrade;
+  proxy_set_header Connection "upgrade";
+  proxy_set_header Host $host;
+}
+```
+
+Then attach:
+
+```bash
+opencode attach https://example.com/opencode/
+```
+
+## Related Commands
+
+<CardGroup cols={2}>
+  <Card title="serve" icon="server" href="/cli/serve">
+    Start headless backend server
+  </Card>
+  <Card title="web" icon="globe" href="/cli/web">
+    Start server with web interface
+  </Card>
+  <Card title="run" icon="play" href="/cli/commands/init">
+    Run commands non-interactively
+  </Card>
+  <Card title="Network Setup" icon="network-wired" href="/network">
+    Configure network access
+  </Card>
+</CardGroup>

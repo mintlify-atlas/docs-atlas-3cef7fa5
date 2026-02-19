@@ -1,0 +1,290 @@
+---
+title: "/connect - Connect to Services"
+description: "Connect to external services and resources during a session"
+---
+
+## Overview
+
+The `/connect` command (when available through plugins or MCP servers) allows you to establish connections to external services during an OpenCode session. This enables real-time access to:
+
+- Cloud resources (AWS, GCP, Azure)
+- Databases (PostgreSQL, MySQL, MongoDB)
+- APIs and webhooks
+- Development servers
+- Remote machines
+
+<Note>
+  The `/connect` command is provided by plugins or MCP servers. Available connection types depend on your installed integrations.
+</Note>
+
+## Usage
+
+```
+/connect <service> [credentials]
+```
+
+## Examples
+
+### Database Connections
+
+Connect to a database:
+
+```
+/connect postgres postgresql://user:pass@localhost:5432/mydb
+/connect mongodb mongodb://localhost:27017/myapp
+/connect redis redis://localhost:6379
+```
+
+Once connected, the agent can:
+- Query data
+- Inspect schema
+- Run migrations
+- Analyze performance
+
+### Cloud Services
+
+Connect to cloud providers:
+
+```
+/connect aws
+/connect gcp project-id
+/connect azure subscription-id
+```
+
+Requires appropriate credentials (environment variables, config files, or IAM roles).
+
+### Development Servers
+
+Connect to local or remote development servers:
+
+```
+/connect dev http://localhost:3000
+/connect staging https://staging.example.com
+```
+
+## Configuration
+
+Connections can be pre-configured in `opencode.json`:
+
+```json
+{
+  "connections": {
+    "database": {
+      "type": "postgres",
+      "url": "postgresql://localhost:5432/myapp"
+    },
+    "api": {
+      "type": "http",
+      "baseURL": "https://api.example.com",
+      "headers": {
+        "Authorization": "Bearer ${API_TOKEN}"
+      }
+    }
+  }
+}
+```
+
+Then connect by name:
+
+```
+/connect database
+/connect api
+```
+
+## Environment Variables
+
+Use environment variables for sensitive credentials:
+
+```bash
+export DATABASE_URL="postgresql://user:pass@localhost/mydb"
+export API_TOKEN="your-api-token"
+export AWS_PROFILE="development"
+```
+
+Reference in configuration:
+
+```json
+{
+  "connections": {
+    "db": {
+      "url": "${DATABASE_URL}"
+    }
+  }
+}
+```
+
+## Security
+
+<Warning>
+  Never commit credentials to version control. Use environment variables or secure credential stores.
+</Warning>
+
+### Best Practices
+
+1. **Use environment variables** for all credentials
+2. **Add `.env` to `.gitignore`**
+3. **Rotate credentials** regularly
+4. **Use least-privilege** access
+5. **Enable MFA** where available
+
+### Credential Storage
+
+OpenCode respects standard credential chains:
+
+- **AWS**: `~/.aws/credentials`, IAM roles, environment variables
+- **GCP**: Application Default Credentials, service accounts
+- **Azure**: Azure CLI credentials, managed identities
+- **Databases**: Connection strings, environment variables
+
+## MCP Server Connections
+
+Many [MCP servers](/mcp-servers) provide connection capabilities:
+
+### Filesystem
+
+```
+/connect filesystem /path/to/directory
+```
+
+### GitHub
+
+```
+/connect github owner/repo
+```
+
+### Slack
+
+```
+/connect slack workspace-name
+```
+
+### Google Drive
+
+```
+/connect gdrive
+```
+
+See each MCP server's documentation for specific connection syntax.
+
+## Plugin Connections
+
+[Plugins](/plugins) can provide custom connection types:
+
+```typescript
+// In a plugin
+export const hooks: Hooks = {
+  connect: {
+    types: [{
+      name: 'myservice',
+      description: 'Connect to MyService',
+      async connect(args) {
+        // Establish connection
+        return { connected: true, client: myClient }
+      }
+    }]
+  }
+}
+```
+
+Then use:
+
+```
+/connect myservice credentials
+```
+
+## Use Cases
+
+### Database Analysis
+
+```
+User: /connect postgres postgresql://localhost/myapp
+User: Show me the 10 slowest queries
+
+Assistant:
+- Connects to database
+- Queries pg_stat_statements
+- Analyzes results
+- Suggests optimizations
+```
+
+### Cloud Resource Management
+
+```
+User: /connect aws
+User: List all EC2 instances and their costs
+
+Assistant:
+- Authenticates with AWS
+- Fetches EC2 instances
+- Retrieves cost data
+- Presents summary
+```
+
+### API Testing
+
+```
+User: /connect api
+User: Test the user registration endpoint
+
+Assistant:
+- Connects to API
+- Sends test requests
+- Validates responses
+- Reports issues
+```
+
+## Connection Lifecycle
+
+1. **Connect**: Establish connection with credentials
+2. **Use**: Agent accesses the service as needed
+3. **Persist**: Connection remains for the session
+4. **Disconnect**: Automatic cleanup on session end
+
+## Troubleshooting
+
+### Connection Failed
+
+**Problem**: Cannot connect to service
+
+**Solutions**:
+- Verify credentials are correct
+- Check network connectivity
+- Ensure service is running
+- Review firewall rules
+- Check permission/IAM policies
+
+### Authentication Error
+
+**Problem**: Credentials rejected
+
+**Solutions**:
+- Verify credentials haven't expired
+- Check credential format
+- Ensure correct environment variables are set
+- Test credentials outside OpenCode
+
+### Command Not Available
+
+**Problem**: `/connect` command not found
+
+**Solutions**:
+- Install an MCP server that provides connections
+- Add a plugin with connection support
+- Check that the server/plugin is properly configured
+
+## Related Topics
+
+<CardGroup cols={2}>
+  <Card title="MCP Servers" icon="server" href="/mcp-servers">
+    Install servers with connection capabilities
+  </Card>
+  <Card title="Plugins" icon="puzzle-piece" href="/plugins">
+    Create custom connection types
+  </Card>
+  <Card title="Configuration" icon="gear" href="/config">
+    Pre-configure connections
+  </Card>
+  <Card title="Commands" icon="terminal" href="/cli/commands/init">
+    Learn about other commands
+  </Card>
+</CardGroup>

@@ -1,0 +1,496 @@
+---
+title: "TUI (Terminal User Interface)"
+description: "Using the OpenCode terminal user interface for AI-powered coding"
+---
+
+OpenCode provides an interactive terminal interface (TUI) for working on your projects with an LLM. The TUI offers a powerful, keyboard-driven experience for coding with AI assistance.
+
+## Getting Started
+
+Start the TUI by running:
+
+```bash
+opencode
+```
+
+This starts OpenCode in the current directory. You can also specify a project path:
+
+```bash
+opencode /path/to/project
+```
+
+### Start with a specific model
+
+Use the `-m` or `--model` flag to start with a specific model:
+
+```bash
+opencode --model anthropic/claude-sonnet-4
+```
+
+### Continue a previous session
+
+Resume your last session with the `-c` or `--continue` flag:
+
+```bash
+opencode --continue
+```
+
+Or continue a specific session by ID:
+
+```bash
+opencode --session ses_abc123
+```
+
+### Fork a session
+
+Create a fork of an existing session to explore alternative approaches:
+
+```bash
+opencode --session ses_abc123 --fork
+```
+
+### Start with a prompt
+
+Provide an initial prompt directly from the command line:
+
+```bash
+opencode --prompt "Add unit tests for the auth module"
+```
+
+You can also pipe input to OpenCode:
+
+```bash
+echo "Refactor this code" | opencode
+```
+
+---
+
+## File References
+
+You can reference files in your messages using the `@` symbol. This performs a fuzzy file search in your working directory:
+
+```text
+How is authentication handled in @packages/functions/src/api/index.ts?
+```
+
+The file content is automatically added to the conversation context.
+
+<Tip>
+Use `@` to quickly add relevant files to the context without manually copying paths.
+</Tip>
+
+---
+
+## Bash Commands
+
+Start a message with `!` to run a shell command:
+
+```bash
+!ls -la
+```
+
+The command output is added to the conversation as a tool result, allowing the AI to see and respond to the output.
+
+---
+
+## Slash Commands
+
+The TUI supports slash commands for quick actions. Type `/` followed by a command name:
+
+```bash
+/help
+```
+
+Most commands also have keyboard shortcuts using `ctrl+x` as the leader key.
+
+### Available Commands
+
+#### `/connect`
+
+Add a provider to OpenCode. Select from available providers and add their API keys.
+
+```bash
+/connect
+```
+
+#### `/compact`
+
+Compact (summarize) the current session to reduce context usage.
+
+```bash
+/compact
+```
+
+**Keybind:** `ctrl+x c`
+
+**Alias:** `/summarize`
+
+#### `/details`
+
+Toggle tool execution details visibility in the conversation.
+
+```bash
+/details
+```
+
+**Keybind:** `ctrl+x d`
+
+#### `/editor`
+
+Open an external editor for composing multi-line messages. Uses the editor specified in your `EDITOR` environment variable.
+
+```bash
+/editor
+```
+
+**Keybind:** `ctrl+x e`
+
+<Note>
+See [Editor Setup](#editor-setup) for configuration instructions.
+</Note>
+
+#### `/exit`
+
+Exit OpenCode.
+
+```bash
+/exit
+```
+
+**Keybind:** `ctrl+x q`
+
+**Aliases:** `/quit`, `/q`
+
+#### `/export`
+
+Export the current conversation to Markdown and open it in your default editor.
+
+```bash
+/export
+```
+
+**Keybind:** `ctrl+x x`
+
+#### `/help`
+
+Show the help dialog with available commands and keybinds.
+
+```bash
+/help
+```
+
+**Keybind:** `ctrl+x h`
+
+#### `/init`
+
+Create or update the `AGENTS.md` file for project-specific rules and instructions.
+
+```bash
+/init
+```
+
+**Keybind:** `ctrl+x i`
+
+#### `/models`
+
+List available models from configured providers.
+
+```bash
+/models
+```
+
+**Keybind:** `ctrl+x m`
+
+#### `/new`
+
+Start a new session.
+
+```bash
+/new
+```
+
+**Keybind:** `ctrl+x n`
+
+**Alias:** `/clear`
+
+#### `/redo`
+
+Redo a previously undone message. Only available after using `/undo`.
+
+```bash
+/redo
+```
+
+**Keybind:** `ctrl+x r`
+
+<Note>
+File changes made by the redone message will be restored. Your project must be a Git repository for this to work.
+</Note>
+
+#### `/sessions`
+
+List and switch between sessions.
+
+```bash
+/sessions
+```
+
+**Keybind:** `ctrl+x l`
+
+**Aliases:** `/resume`, `/continue`
+
+#### `/share`
+
+Share the current session. Generates a shareable link to your conversation.
+
+```bash
+/share
+```
+
+**Keybind:** `ctrl+x s`
+
+#### `/theme`
+
+List and switch between available themes.
+
+```bash
+/theme
+```
+
+**Keybind:** `ctrl+x t`
+
+#### `/thinking`
+
+Toggle visibility of thinking/reasoning blocks in the conversation. When enabled, you can see the model's reasoning process for models that support extended thinking.
+
+```bash
+/thinking
+```
+
+<Note>
+This command only controls whether thinking blocks are displayed - it doesn't enable or disable the model's reasoning capabilities. Use `ctrl+t` to cycle through model variants that support reasoning.
+</Note>
+
+#### `/undo`
+
+Undo the last message in the conversation. Removes the most recent user message, all subsequent responses, and reverts any file changes.
+
+```bash
+/undo
+```
+
+**Keybind:** `ctrl+x u`
+
+<Note>
+File changes will be reverted using Git. Your project must be a Git repository for this to work.
+</Note>
+
+#### `/unshare`
+
+Unshare the current session, removing public access.
+
+```bash
+/unshare
+```
+
+---
+
+## Keyboard Shortcuts
+
+The TUI is designed for keyboard-driven workflows. Here are the essential shortcuts:
+
+### Leader Key Commands
+
+Most commands use `ctrl+x` as the leader key, followed by a second key:
+
+- `ctrl+x h` - Show help
+- `ctrl+x n` - New session
+- `ctrl+x l` - List sessions
+- `ctrl+x c` - Compact session
+- `ctrl+x d` - Toggle details
+- `ctrl+x e` - Open editor
+- `ctrl+x x` - Export conversation
+- `ctrl+x s` - Share session
+- `ctrl+x t` - Change theme
+- `ctrl+x m` - List models
+- `ctrl+x i` - Initialize AGENTS.md
+- `ctrl+x u` - Undo
+- `ctrl+x r` - Redo
+- `ctrl+x q` - Quit
+
+### Navigation
+
+- `PageUp` / `PageDown` - Scroll by page
+- `Home` / `End` - Jump to start/end of conversation
+- `↑` / `↓` - Navigate through message history
+
+### Model Variants
+
+- `ctrl+t` - Cycle through model variants (default, extended thinking, etc.)
+
+### Input Shortcuts
+
+- `Enter` - Submit message
+- `Meta+Enter` (macOS) or `Alt+Enter` (Linux/Windows) - Insert newline
+- `Escape` - Blur input field
+
+---
+
+## Editor Setup
+
+Both the `/editor` and `/export` commands use the editor specified in your `EDITOR` environment variable. If not set, they fall back to `VISUAL`.
+
+### Linux/macOS
+
+Add to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.):
+
+```bash
+# Terminal editors
+export EDITOR=nano
+# or
+export EDITOR=vim
+# or
+export EDITOR=nvim
+
+# GUI editors (require --wait flag)
+export EDITOR="code --wait"      # VS Code
+export EDITOR="cursor --wait"    # Cursor
+export EDITOR="windsurf --wait"  # Windsurf
+export EDITOR="zed --wait"       # Zed
+```
+
+### Windows (CMD)
+
+```cmd
+set EDITOR=notepad
+
+# For GUI editors with --wait
+set EDITOR=code --wait
+```
+
+To make it permanent, use **System Properties** > **Environment Variables**.
+
+### Windows (PowerShell)
+
+```powershell
+$env:EDITOR = "notepad"
+
+# For GUI editors with --wait
+$env:EDITOR = "code --wait"
+```
+
+To make it permanent, add to your PowerShell profile.
+
+<Note>
+GUI editors like VS Code, Cursor, Windsurf, and Zed need the `--wait` flag to block until the editor is closed.
+</Note>
+
+---
+
+## Configuration
+
+You can customize TUI behavior through your OpenCode config file (`opencode.json`):
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "tui": {
+    "scroll_speed": 3,
+    "scroll_acceleration": {
+      "enabled": true
+    }
+  }
+}
+```
+
+### Options
+
+**`scroll_speed`**
+
+Controls how fast the TUI scrolls when using scroll commands (minimum: `1`). Defaults to `3`.
+
+<Note>
+This setting is ignored if `scroll_acceleration.enabled` is `true`.
+</Note>
+
+**`scroll_acceleration.enabled`**
+
+Enable macOS-style scroll acceleration for smooth, natural scrolling. When enabled, scroll speed increases with rapid scrolling gestures and stays precise for slower movements.
+
+This setting takes precedence over `scroll_speed`.
+
+---
+
+## Customization
+
+You can customize various aspects of the TUI through the command palette (`ctrl+x h` or `/help`). Settings persist across restarts.
+
+### Username Display
+
+Toggle whether your username appears in chat messages:
+
+1. Open command palette: `ctrl+x h` or `/help`
+2. Search for "username" or "hide username"
+3. Toggle the setting
+
+The setting is automatically saved and remembered across sessions.
+
+---
+
+## Running with a Server
+
+By default, the TUI communicates directly with OpenCode's internal engine. You can optionally run a web server alongside the TUI:
+
+```bash
+opencode --port 4096
+```
+
+This starts both the TUI and a web server, allowing you to:
+
+- Access the web interface at `http://localhost:4096`
+- Attach additional TUI instances to the same server
+- Share sessions across multiple interfaces
+
+### Network Access
+
+Make the server accessible on your local network:
+
+```bash
+opencode --hostname 0.0.0.0 --port 4096
+```
+
+### mDNS Discovery
+
+Enable mDNS for automatic server discovery:
+
+```bash
+opencode --mdns
+```
+
+This makes your server discoverable as `opencode.local` on your network.
+
+---
+
+## Tips and Tricks
+
+### Auto-focus Input
+
+The TUI automatically focuses the input field when you start typing (except when the terminal panel is open on desktop). This allows for a fluid, conversation-like experience.
+
+### Scroll Behavior
+
+The TUI automatically scrolls to follow new messages. If you scroll up to review previous messages, auto-scroll pauses. Scroll back to the bottom to resume auto-scrolling.
+
+### Custom Commands
+
+You can add custom slash commands through your OpenCode configuration. These commands can execute scripts, run build tools, or perform any custom automation.
+
+### Agent Selection
+
+Use the `--agent` flag to start with a specific agent:
+
+```bash
+opencode --agent architect
+```
+
+Agents define different working modes and capabilities for OpenCode.

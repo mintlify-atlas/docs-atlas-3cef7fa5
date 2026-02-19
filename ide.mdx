@@ -1,0 +1,144 @@
+---
+title: IDE Integration
+description: The OpenCode extension for VS Code, Cursor, and other IDEs.
+---
+
+OpenCode integrates with VS Code, Cursor, or any IDE that supports a terminal. Just run `opencode` in the terminal to get started.
+
+## Features
+
+- **Quick Launch**: Use keyboard shortcuts to open OpenCode instantly in a split terminal view
+- **New Session**: Start multiple OpenCode sessions with dedicated shortcuts
+- **Context Awareness**: Automatically share your current selection or tab with OpenCode
+- **File Reference Shortcuts**: Quickly insert file references into OpenCode prompts
+
+## Usage
+
+### Keyboard Shortcuts
+
+<Steps>
+  <Step title="Quick Launch">
+    Use `Cmd+Esc` (Mac) or `Ctrl+Esc` (Windows/Linux) to open OpenCode in a split terminal view, or focus an existing terminal session if one is already running.
+  </Step>
+  
+  <Step title="New Session">
+    Use `Cmd+Shift+Esc` (Mac) or `Ctrl+Shift+Esc` (Windows/Linux) to start a new OpenCode terminal session, even if one is already open. You can also click the OpenCode button in the UI.
+  </Step>
+  
+  <Step title="File Reference Shortcuts">
+    Use `Cmd+Option+K` (Mac) or `Alt+Ctrl+K` (Linux/Windows) to insert file references. For example, `@File#L37-42`.
+  </Step>
+</Steps>
+
+### Context Awareness
+
+OpenCode automatically shares your current selection or active tab with the AI, providing relevant context for your requests without manual copying and pasting.
+
+## Installation
+
+To install OpenCode on VS Code and popular forks like Cursor, Windsurf, VSCodium:
+
+<Steps>
+  <Step title="Open VS Code">
+    Launch your IDE (VS Code, Cursor, Windsurf, or VSCodium).
+  </Step>
+  
+  <Step title="Open the integrated terminal">
+    Open the integrated terminal in your IDE.
+  </Step>
+  
+  <Step title="Run opencode">
+    Run `opencode` - the extension installs automatically.
+  </Step>
+</Steps>
+
+If on the other hand you want to use your own IDE when you run `/editor` or `/export` from the TUI, you'll need to set `export EDITOR="code --wait"`. [Learn more](/tui#editor-setup).
+
+### Manual Install
+
+Search for **OpenCode** in the Extension Marketplace and click **Install**.
+
+### Supported IDEs
+
+OpenCode supports the following IDEs:
+
+- **VS Code** - The standard Visual Studio Code editor
+- **Cursor** - AI-first code editor built on VS Code
+- **Windsurf** - Collaborative code editor
+- **VSCodium** - Open-source builds of VS Code without Microsoft branding/telemetry
+
+All VS Code-compatible IDEs that support extensions should work with OpenCode.
+
+## Troubleshooting
+
+If the extension fails to install automatically:
+
+<Steps>
+  <Step title="Check terminal">
+    Ensure you're running `opencode` in the integrated terminal, not an external terminal.
+  </Step>
+  
+  <Step title="Verify CLI installation">
+    Confirm the CLI for your IDE is installed:
+    - For VS Code: `code` command
+    - For Cursor: `cursor` command
+    - For Windsurf: `windsurf` command
+    - For VSCodium: `codium` command
+    
+    If not, run `Cmd+Shift+P` (Mac) or `Ctrl+Shift+P` (Windows/Linux) and search for "Shell Command: Install 'code' command in PATH" (or the equivalent for your IDE).
+  </Step>
+  
+  <Step title="Check permissions">
+    Ensure VS Code has permission to install extensions. Some organizations restrict extension installation.
+  </Step>
+</Steps>
+
+## Editor Setup for TUI
+
+If you want to use a specific editor when running `/editor` or `/export` from the OpenCode TUI, set the `EDITOR` environment variable:
+
+```bash
+export EDITOR="code --wait"
+```
+
+For other editors:
+
+```bash
+# For Cursor
+export EDITOR="cursor --wait"
+
+# For Vim
+export EDITOR="vim"
+
+# For Nano
+export EDITOR="nano"
+
+# For Sublime Text
+export EDITOR="subl --wait"
+```
+
+The `--wait` flag tells the editor to wait until the file is closed before returning control to OpenCode.
+
+## FAQ
+
+<AccordionGroup>
+  <Accordion title="Can I use OpenCode without the extension?">
+    Yes, you can run `opencode` in any terminal. The extension provides additional features like keyboard shortcuts and context awareness, but it's not required.
+  </Accordion>
+  
+  <Accordion title="Does OpenCode work with other IDEs besides VS Code?">
+    OpenCode works in any terminal, so you can use it with any IDE that has terminal support. The VS Code extension provides enhanced integration for VS Code and compatible editors.
+  </Accordion>
+  
+  <Accordion title="Can I customize the keyboard shortcuts?">
+    Yes, you can customize keyboard shortcuts in your IDE's keyboard shortcuts settings. Search for "OpenCode" in the keyboard shortcuts editor.
+  </Accordion>
+  
+  <Accordion title="How do I update the OpenCode extension?">
+    The extension updates automatically through your IDE's extension marketplace. You can also manually check for updates in the Extensions view.
+  </Accordion>
+  
+  <Accordion title="Can I use OpenCode in remote development environments?">
+    Yes, OpenCode works in remote development environments like GitHub Codespaces, GitPod, and VS Code Remote containers.
+  </Accordion>
+</AccordionGroup>

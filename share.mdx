@@ -1,0 +1,601 @@
+---
+title: 'Session Sharing'
+description: 'Share conversations, collaborate with teammates, and manage public session links'
+icon: 'share-nodes'
+---
+
+OpenCode's session sharing feature creates public links to your AI conversations, enabling collaboration, code reviews, debugging assistance, and knowledge sharing.
+
+<Note>
+Shared sessions are **publicly accessible** to anyone with the link. Review content before sharing to avoid exposing sensitive information.
+</Note>
+
+## How Session Sharing Works
+
+<Steps>
+  <Step title="Create or select a session">
+    Work on your code in a session as usual. The session contains:
+    - Full conversation history (your prompts + AI responses)
+    - File diffs and code changes
+    - Tool use records (file reads, writes, bash commands)
+    - Session metadata (title, creation date, model used)
+  </Step>
+  
+  <Step title="Share the session">
+    Run `/share` command or use the API:
+    
+    ```bash
+    # In TUI
+    /share
+    
+    # Via API
+    curl -X POST http://localhost:4096/session/<session-id>/share
+    ```
+  </Step>
+  
+  <Step title="Unique URL generated">
+    OpenCode creates a unique share URL:
+    
+    ```
+    https://opncd.ai/s/s_abc123xyz789
+    ```
+    
+    The URL is automatically copied to your clipboard (TUI) or returned in the API response.
+  </Step>
+  
+  <Step title="Data synced to cloud">
+    Session data is uploaded to OpenCode's servers:
+    - All messages and responses
+    - File diffs (not full file contents)
+    - Session configuration
+    - Metadata (timestamps, model info)
+  </Step>
+  
+  <Step title="Share the link">
+    Send the URL to teammates via:
+    - Slack/Teams/Discord
+    - Email
+    - GitHub PR comments
+    - Documentation
+  </Step>
+</Steps>
+
+## Sharing Modes
+
+OpenCode supports three sharing modes to match different workflows and security requirements.
+
+### Manual (Default)
+
+Sessions are **not** shared automatically. You explicitly control when to share.
+
+```bash
+# Share current session
+/share
+
+# Unshare when done
+/unshare
+```
+
+**Configuration** (optional):
+
+```json opencode.json
+{
+  "$schema": "https://opncd.ai/config.json",
+  "share": "manual"
+}
+```
+
+<Accordion title="When to use Manual mode">
+  - Default safe mode for most users
+  - Working with proprietary code
+  - Only sharing specific debugging sessions
+  - Explicit control over what gets shared
+</Accordion>
+
+### Auto-share
+
+Every new session is **automatically** shared upon creation.
+
+```json opencode.json
+{
+  "$schema": "https://opncd.ai/config.json",
+  "share": "auto"
+}
+```
+
+<Accordion title="When to use Auto-share mode">
+  - Open source projects
+  - Team collaboration where all sessions should be visible
+  - Educational/tutorial content creation
+  - Public coding demonstrations
+  
+  <Warning>
+  Review session content regularly. Even with auto-share, you can `/unshare` individual sessions.
+  </Warning>
+</Accordion>
+
+### Disabled
+
+Sharing is completely **disabled**. The `/share` command will not work.
+
+```json opencode.json
+{
+  "$schema": "https://opncd.ai/config.json",
+  "share": "disabled"
+}
+```
+
+<Accordion title="When to use Disabled mode">
+  - Enterprise environments with strict data policies
+  - Highly sensitive projects (healthcare, finance, defense)
+  - Compliance requirements (HIPAA, SOC 2, ISO 27001)
+  - Air-gapped or offline development
+  
+  <Note>
+  For team-wide enforcement, commit `opencode.json` with `"share": "disabled"` to version control.
+  </Note>
+</Accordion>
+
+## Using the Share API
+
+### Share a Session
+
+<CodeGroup>
+```bash cURL
+curl -X POST http://localhost:4096/session/abc123/share
+```
+
+```json Response
+{
+  "id": "abc123",
+  "title": "Add authentication",
+  "shareID": "s_xyz789abc",
+  "shareURL": "https://opncd.ai/s/s_xyz789abc",
+  "createdAt": 1708387200000,
+  "updatedAt": 1708387200000,
+  "parentID": null
+}
+```
+</CodeGroup>
+
+<ResponseField name="shareID" type="string">
+  Unique identifier for the shared session (prefixed with `s_`).
+</ResponseField>
+
+<ResponseField name="shareURL" type="string">
+  Full public URL to the shared session.
+</ResponseField>
+
+### Unshare a Session
+
+Remove public access and delete cloud data:
+
+<CodeGroup>
+```bash cURL
+curl -X DELETE http://localhost:4096/session/abc123/share
+```
+
+```json Response
+{
+  "id": "abc123",
+  "title": "Add authentication",
+  "shareID": null,
+  "shareURL": null,
+  "createdAt": 1708387200000,
+  "updatedAt": 1708387260000,
+  "parentID": null
+}
+```
+</CodeGroup>
+
+<Note>
+`shareID` and `shareURL` become `null` after unsharing. The link will return 404.
+</Note>
+
+### Check Share Status
+
+Query whether a session is currently shared:
+
+<CodeGroup>
+```bash cURL
+curl http://localhost:4096/session/abc123
+```
+
+```json Shared Session
+{
+  "id": "abc123",
+  "shareID": "s_xyz789abc",
+  "shareURL": "https://opncd.ai/s/s_xyz789abc",
+  ...
+}
+```
+
+```json Not Shared
+{
+  "id": "abc123",
+  "shareID": null,
+  "shareURL": null,
+  ...
+}
+```
+</CodeGroup>
+
+## What Gets Shared
+
+When you share a session, the following data is uploaded:
+
+<AccordionGroup>
+  <Accordion title="Conversation History" icon="comments">
+    - All user prompts (your messages)
+    - All AI responses (assistant messages)
+    - Tool use records (file operations, bash commands)
+    - Timestamps and message order
+    - Model and provider information
+  </Accordion>
+  
+  <Accordion title="File Diffs" icon="code-compare">
+    - Diffs of changed files (hunks with context)
+    - File paths relative to project root
+    - **Not full file contents**, only changes made during the session
+  </Accordion>
+  
+  <Accordion title="Session Metadata" icon="info-circle">
+    - Session title
+    - Creation and update timestamps
+    - Parent session ID (if forked)
+    - Agent used (e.g., `task`, `research`)
+    - Model configuration
+  </Accordion>
+  
+  <Accordion title="Todo Lists" icon="list-check">
+    - Task breakdown and planning
+    - Task completion status
+    - Task descriptions
+  </Accordion>
+</AccordionGroup>
+
+### What is NOT Shared
+
+<Warning>
+**Data that remains local:**
+- Full source code files (only diffs are shared)
+- Environment variables
+- API keys and secrets (never include these in prompts!)
+- Local file paths outside the project
+- Git history or repository metadata
+- User's global OpenCode configuration
+</Warning>
+
+## Privacy and Security
+
+### Data Retention
+
+Shared sessions remain accessible **indefinitely** until explicitly unshared.
+
+<Steps>
+  <Step title="Initial share">
+    Data uploaded to `opncd.ai` servers.
+  </Step>
+  
+  <Step title="Link active">
+    Anyone with the URL can view the session.
+  </Step>
+  
+  <Step title="Unshare">
+    Run `/unshare` to delete the share:
+    - Link becomes invalid (404)
+    - Data removed from servers within 24 hours
+    - Local session remains intact
+  </Step>
+</Steps>
+
+<Note>
+Automatic expiration is not currently supported. Always manually unshare sessions when collaboration is complete.
+</Note>
+
+### Access Control
+
+Shared sessions use **URL-based access** (no authentication required):
+
+- ✅ Simple sharing (no account needed)
+- ✅ Works with any browser
+- ❌ Anyone with the link can access
+- ❌ Cannot restrict to specific users
+
+<Accordion title="Securing Shared Sessions">
+  **Best Practices:**
+  
+  1. **Treat share URLs like passwords**
+     - Share via secure channels (encrypted chat, private repos)
+     - Avoid posting in public forums or social media
+  
+  2. **Time-box sharing**
+     - Unshare immediately after collaboration ends
+     - Review active shares periodically
+  
+  3. **Use short-lived channels**
+     - Send links via disappearing messages (Signal, Telegram)
+     - Share in private GitHub comments, not PR descriptions
+  
+  4. **Monitor access** (future feature)
+     - Request: Star [#issue-number] for access logs
+</Accordion>
+
+### Compliance Considerations
+
+For regulated industries (healthcare, finance, government):
+
+<CardGroup cols={2}>
+  <Card title="HIPAA" icon="hospital">
+    **Do not share sessions** containing PHI (Protected Health Information). Use `"share": "disabled"` for HIPAA-regulated projects.
+  </Card>
+  
+  <Card title="GDPR" icon="scale-balanced">
+    Shared sessions may contain personal data. Ensure compliance with:
+    - Data processing agreements
+    - User consent requirements
+    - Right to erasure (use `/unshare`)
+  </Card>
+  
+  <Card title="SOC 2" icon="shield-halved">
+    Sharing may violate data residency or access control policies. Audit `"share": "auto"` configurations.
+  </Card>
+  
+  <Card title="Export Control" icon="ban">
+    Government/defense contractors: Verify that sharing complies with ITAR, EAR, or similar regulations.
+  </Card>
+</CardGroup>
+
+### Recommendations by Project Type
+
+<Tabs>
+  <Tab title="Open Source">
+    ✅ **Auto-share enabled**
+    
+    ```json opencode.json
+    {
+      "share": "auto"
+    }
+    ```
+    
+    Benefits:
+    - Community can learn from your process
+    - Easy debugging help from maintainers
+    - Transparent development
+  </Tab>
+  
+  <Tab title="Private Startup">
+    ⚠️ **Manual sharing (default)**
+    
+    ```json opencode.json
+    {
+      "share": "manual"
+    }
+    ```
+    
+    Guidelines:
+    - Only share for code reviews or pair programming
+    - Unshare after resolving the issue
+    - Avoid sharing sessions with business logic
+  </Tab>
+  
+  <Tab title="Enterprise">
+    🛑 **Sharing disabled**
+    
+    ```json opencode.json
+    {
+      "share": "disabled"
+    }
+    ```
+    
+    Rationale:
+    - Prevents accidental data leaks
+    - Enforces data residency policies
+    - Complies with security audits
+  </Tab>
+</Tabs>
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Remote Debugging" icon="bug">
+    Share a session showing the bug reproduction steps. Teammates can see the full context without screenshots.
+  </Card>
+  
+  <Card title="Code Review" icon="code-pull-request">
+    Link to the session in your PR description. Reviewers see the reasoning behind changes.
+  </Card>
+  
+  <Card title="Documentation" icon="book">
+    Create "how we built X" posts by sharing sessions. Perfect for engineering blogs.
+  </Card>
+  
+  <Card title="Onboarding" icon="user-plus">
+    Share sessions demonstrating common workflows. New hires learn by example.
+  </Card>
+  
+  <Card title="Support Tickets" icon="headset">
+    When asking for help in GitHub issues, share the session to provide full context.
+  </Card>
+  
+  <Card title="Teaching" icon="chalkboard-user">
+    Instructors can share sessions as interactive tutorials. Students see the AI's reasoning.
+  </Card>
+</CardGroup>
+
+## Enterprise Features
+
+For organizations needing advanced sharing controls:
+
+<AccordionGroup>
+  <Accordion title="Self-Hosted Sharing" icon="building">
+    Deploy your own share server:
+    
+    - Data never leaves your infrastructure
+    - Integrate with SSO (SAML, OAuth)
+    - Custom retention policies
+    - Audit logs for compliance
+    
+    [Contact sales](/enterprise) for self-hosted options.
+  </Accordion>
+  
+  <Accordion title="SSO-Protected Shares" icon="key">
+    Require authentication to view shared sessions:
+    
+    - Restrict to employees with company email
+    - Integrate with Okta, Azure AD, Google Workspace
+    - Revoke access when employees leave
+    
+    [Contact sales](/enterprise) for SSO integration.
+  </Accordion>
+  
+  <Accordion title="Share Analytics" icon="chart-line">
+    Track who views shared sessions:
+    
+    - View counts and timestamps
+    - Viewer IP addresses and locations
+    - Export access logs for audits
+    
+    Available in enterprise plans.
+  </Accordion>
+</AccordionGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="/share command does nothing">
+    **Possible causes:**
+    
+    1. Sharing is disabled in config:
+       ```bash
+       # Check config
+       cat ~/.config/opencode/opencode.json | grep share
+       # Should not be "disabled"
+       ```
+    
+    2. Network connectivity issues:
+       ```bash
+       # Test connectivity
+       curl https://opncd.ai/health
+       ```
+    
+    3. Session has no content yet:
+       - Only sessions with messages can be shared
+  </Accordion>
+  
+  <Accordion title="Share URL returns 404">
+    **Reasons:**
+    
+    - Session was unshared
+    - Share ID is incorrect (typo in URL)
+    - Server maintenance (rare, check status page)
+    
+    **Fix:** Re-share the session to generate a new URL.
+  </Accordion>
+  
+  <Accordion title="Cannot unshare session">
+    **Workarounds:**
+    
+    1. Try via API:
+       ```bash
+       curl -X DELETE http://localhost:4096/session/<id>/share
+       ```
+    
+    2. Contact support if data must be removed urgently:
+       [support@opencode.ai](mailto:support@opencode.ai)
+  </Accordion>
+  
+  <Accordion title="Accidentally shared sensitive data">
+    **Immediate steps:**
+    
+    1. Unshare the session immediately:
+       ```bash
+       /unshare
+       ```
+    
+    2. Delete the session locally:
+       ```bash
+       # In TUI: Open sessions (Ctrl+P → Sessions) → Delete
+       ```
+    
+    3. If secrets were exposed:
+       - Rotate API keys immediately
+       - Revoke OAuth tokens
+       - Change passwords
+    
+    4. Contact support for expedited deletion:
+       [security@opencode.ai](mailto:security@opencode.ai)
+  </Accordion>
+</AccordionGroup>
+
+## Best Practices
+
+<Steps>
+  <Step title="Review before sharing">
+    Skim the session for sensitive data:
+    
+    - API keys or tokens
+    - Internal URLs or hostnames
+    - Customer data or PII
+    - Proprietary algorithms
+  </Step>
+  
+  <Step title="Use descriptive titles">
+    ```bash
+    # Good titles
+    "Fix authentication bug in /api/login"
+    "Refactor database migrations"
+    
+    # Bad titles
+    "Debug"
+    "Session 1"
+    ```
+    
+    Recipients understand context immediately.
+  </Step>
+  
+  <Step title="Share early in collaboration">
+    Share at the start of debugging/pairing sessions, not after. Collaborators see your thought process in real-time.
+  </Step>
+  
+  <Step title="Unshare when done">
+    Add a reminder:
+    
+    ```bash
+    # ~/.bashrc or ~/.zshrc
+    alias opencode='echo "Remember to /unshare when done!" && command opencode'
+    ```
+  </Step>
+  
+  <Step title="Document in PRs">
+    Include share links in pull request descriptions:
+    
+    ```markdown
+    ## Changes
+    - Added user authentication
+    
+    ## Context
+    See development session: https://opncd.ai/s/s_abc123
+    ```
+  </Step>
+</Steps>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Server API" icon="server" href="/server">
+    Use the `/session/:id/share` API programmatically.
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/config">
+    Configure sharing modes in `opencode.json`.
+  </Card>
+  
+  <Card title="Enterprise" icon="building" href="/enterprise">
+    Self-hosted sharing and SSO integration.
+  </Card>
+  
+  <Card title="Privacy Policy" icon="file-shield" href="https://opencode.ai/privacy">
+    Review how shared data is handled.
+  </Card>
+</CardGroup>

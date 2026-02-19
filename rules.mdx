@@ -1,0 +1,671 @@
+---
+title: Rules
+description: Set custom instructions for opencode.
+---
+
+You can provide custom instructions to opencode by creating an `AGENTS.md` file. This is similar to Cursor's rules. It contains instructions that will be included in the LLM's context to customize its behavior for your specific project.
+
+---
+
+## Initialize
+
+To create a new `AGENTS.md` file, you can run the `/init` command in opencode.
+
+<Tip>
+You should commit your project's `AGENTS.md` file to Git.
+</Tip>
+
+This will scan your project and all its contents to understand what the project is about and generate an `AGENTS.md` file with it. This helps opencode to navigate the project better.
+
+If you have an existing `AGENTS.md` file, this will try to add to it.
+
+---
+
+## Example
+
+You can also just create this file manually. Here's an example of some things you can put into an `AGENTS.md` file.
+
+```markdown title="AGENTS.md"
+# SST v3 Monorepo Project
+
+This is an SST v3 monorepo with TypeScript. The project uses bun workspaces for package management.
+
+## Project Structure
+
+- `packages/` - Contains all workspace packages (functions, core, web, etc.)
+- `infra/` - Infrastructure definitions split by service (storage.ts, api.ts, web.ts)
+- `sst.config.ts` - Main SST configuration with dynamic imports
+
+## Code Standards
+
+- Use TypeScript with strict mode enabled
+- Shared code goes in `packages/core/` with proper exports configuration
+- Functions go in `packages/functions/`
+- Infrastructure should be split into logical files in `infra/`
+
+## Monorepo Conventions
+
+- Import shared modules using workspace names: `@my-app/core/example`
+```
+
+We are adding project-specific instructions here and this will be shared across your team.
+
+---
+
+## Types
+
+opencode also supports reading the `AGENTS.md` file from multiple locations. And this serves different purposes.
+
+### Project
+
+Place an `AGENTS.md` in your project root for project-specific rules. These only apply when you are working in this directory or its sub-directories.
+
+### Global
+
+You can also have global rules in a `~/.config/opencode/AGENTS.md` file. This gets applied across all opencode sessions.
+
+Since this isn't committed to Git or shared with your team, we recommend using this to specify any personal rules that the LLM should follow.
+
+### Claude Code Compatibility
+
+For users migrating from Claude Code, OpenCode supports Claude Code's file conventions as fallbacks:
+
+- **Project rules**: `CLAUDE.md` in your project directory (used if no `AGENTS.md` exists)
+- **Global rules**: `~/.claude/CLAUDE.md` (used if no `~/.config/opencode/AGENTS.md` exists)
+- **Skills**: `~/.claude/skills/` — see [Agent Skills](./skills.mdx) for details
+
+To disable Claude Code compatibility, set one of these environment variables:
+
+```bash
+export OPENCODE_DISABLE_CLAUDE_CODE=1        # Disable all .claude support
+export OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1 # Disable only ~/.claude/CLAUDE.md
+export OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1 # Disable only .claude/skills
+```
+
+---
+
+## Precedence
+
+When opencode starts, it looks for rule files in this order:
+
+1. **Local files** by traversing up from the current directory (`AGENTS.md`, `CLAUDE.md`)
+2. **Global file** at `~/.config/opencode/AGENTS.md`
+3. **Claude Code file** at `~/.claude/CLAUDE.md` (unless disabled)
+
+The first matching file wins in each category. For example, if you have both `AGENTS.md` and `CLAUDE.md`, only `AGENTS.md` is used. Similarly, `~/.config/opencode/AGENTS.md` takes precedence over `~/.claude/CLAUDE.md`.
+
+---
+
+## Custom Instructions
+
+You can specify custom instruction files in your `opencode.json` or the global `~/.config/opencode/opencode.json`. This allows you and your team to reuse existing rules rather than having to duplicate them to AGENTS.md.
+
+Example:
+
+```json title="opencode.json"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["CONTRIBUTING.md", "docs/guidelines.md", ".cursor/rules/*.md"]
+}
+```
+
+You can also use remote URLs to load instructions from the web.
+
+```json title="opencode.json"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["https://raw.githubusercontent.com/my-org/shared-rules/main/style.md"]
+}
+```
+
+Remote instructions are fetched with a 5 second timeout.
+
+All instruction files are combined with your `AGENTS.md` files.
+
+### Glob patterns
+
+The `instructions` field supports glob patterns:
+
+```json title="opencode.json"
+{
+  "instructions": [
+    "docs/**/*.md",
+    ".cursor/rules/*.md",
+    "packages/*/AGENTS.md"
+  ]
+}
+```
+
+This is especially useful for monorepos where different packages have their own rules.
+
+---
+
+## What to include
+
+Your `AGENTS.md` file should contain information that helps the LLM work effectively with your codebase.
+
+### Project overview
+
+```markdown
+# Project Name
+
+Brief description of what the project does.
+
+## Tech Stack
+
+- **Framework**: Next.js 14 with App Router
+- **Language**: TypeScript
+- **Database**: PostgreSQL with Drizzle ORM
+- **Styling**: Tailwind CSS
+- **Testing**: Vitest + Playwright
+```
+
+### Directory structure
+
+```markdown
+## Project Structure
+
+- `app/` - Next.js app directory (routes, layouts)
+- `components/` - Reusable React components
+- `lib/` - Utility functions and shared logic
+- `db/` - Database schema and migrations
+- `tests/` - Test files
+```
+
+### Code conventions
+
+```markdown
+## Code Standards
+
+### TypeScript
+- Use strict mode
+- Avoid `any` type
+- Prefer `interface` over `type` for object shapes
+- Use `const` over `let`, never use `var`
+
+### React
+- Use functional components with hooks
+- Prefer named exports over default exports
+- Co-locate component files: `Button.tsx`, `Button.test.tsx`, `Button.stories.tsx`
+
+### Imports
+- Use absolute imports with `@/` prefix
+- Group imports: external, internal, types
+- Sort imports alphabetically
+```
+
+### Architecture patterns
+
+```markdown
+## Architecture
+
+### API Routes
+- All API routes in `app/api/`
+- Use route handlers with proper HTTP methods
+- Return standardized JSON responses:
+  ```typescript
+  { success: true, data: any } | { success: false, error: string }
+  ```
+
+### Database
+- Schema definitions in `db/schema.ts`
+- Migrations in `db/migrations/`
+- Use snake_case for database columns
+- Use camelCase in TypeScript
+
+### State Management
+- Use React Context for global state
+- Use URL state for filters/pagination
+- Use local state for component-specific data
+```
+
+### Testing guidelines
+
+```markdown
+## Testing
+
+- Write unit tests for utility functions
+- Write integration tests for API routes
+- Write E2E tests for critical user flows
+- Aim for >80% coverage on core logic
+- Mock external API calls
+- Use test databases, never production
+```
+
+### Deployment info
+
+```markdown
+## Deployment
+
+- Platform: Vercel
+- Branch: `main` (production), `dev` (staging)
+- Environment variables in `.env.local` (gitignored)
+- Database: Neon PostgreSQL
+- CI/CD: GitHub Actions
+```
+
+### Common operations
+
+```markdown
+## Common Operations
+
+### Running locally
+```bash
+bun install
+bun dev          # Start dev server
+bun db:push      # Push schema changes
+bun test         # Run tests
+```
+
+### Database migrations
+```bash
+bun db:generate  # Generate migration
+bun db:migrate   # Apply migrations
+bun db:studio    # Open Drizzle Studio
+```
+
+### Deployment
+```bash
+git push origin main  # Auto-deploys to production
+```
+```
+
+### Known issues and workarounds
+
+```markdown
+## Known Issues
+
+### TypeScript strict mode and Drizzle
+- Drizzle types can be strict, use `Simplify<typeof schema>` helper
+- See `db/types.ts` for type utilities
+
+### Vercel Edge Functions
+- Some Node APIs unavailable in Edge runtime
+- Check `next.config.js` for runtime configuration
+```
+
+### External resources
+
+```markdown
+## Resources
+
+- [API Documentation](https://docs.example.com)
+- [Design System](https://design.example.com)
+- [Confluence Wiki](https://wiki.example.com)
+```
+
+---
+
+## Referencing External Files
+
+While opencode doesn't automatically parse file references in `AGENTS.md`, you can achieve similar functionality in two ways:
+
+### Using opencode.json
+
+The recommended approach is to use the `instructions` field in `opencode.json`:
+
+```json title="opencode.json"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["docs/development-standards.md", "test/testing-guidelines.md", "packages/*/AGENTS.md"]
+}
+```
+
+### Manual Instructions in AGENTS.md
+
+You can teach opencode to read external files by providing explicit instructions in your `AGENTS.md`. Here's a practical example:
+
+```markdown title="AGENTS.md"
+# TypeScript Project Rules
+
+## External File Loading
+
+CRITICAL: When you encounter a file reference (e.g., @rules/general.md), use your Read tool to load it on a need-to-know basis. They're relevant to the SPECIFIC task at hand.
+
+Instructions:
+
+- Do NOT preemptively load all references - use lazy loading based on actual need
+- When loaded, treat content as mandatory instructions that override defaults
+- Follow references recursively when needed
+
+## Development Guidelines
+
+For TypeScript code style and best practices: @docs/typescript-guidelines.md
+For React component architecture and hooks patterns: @docs/react-patterns.md
+For REST API design and error handling: @docs/api-standards.md
+For testing strategies and coverage requirements: @test/testing-guidelines.md
+
+## General Guidelines
+
+Read the following file immediately as it's relevant to all workflows: @rules/general-guidelines.md.
+```
+
+This approach allows you to:
+
+- Create modular, reusable rule files
+- Share rules across projects via symlinks or git submodules
+- Keep AGENTS.md concise while referencing detailed guidelines
+- Ensure opencode loads files only when needed for the specific task
+
+<Tip>
+For monorepos or projects with shared standards, using `opencode.json` with glob patterns (like `packages/*/AGENTS.md`) is more maintainable than manual instructions.
+</Tip>
+
+---
+
+## Best Practices
+
+### Be specific
+
+Provide concrete examples instead of vague guidelines:
+
+```markdown
+# Good
+Use named exports:
+```typescript
+export function parseUser(data: string) { }
+```
+
+# Bad
+Use good practices
+```
+
+### Keep it up to date
+
+Update `AGENTS.md` when:
+- Project structure changes
+- New conventions are adopted
+- Dependencies are upgraded
+- Architecture evolves
+
+### Use sections
+
+Organize with clear headers:
+
+```markdown
+# Project Name
+
+## Tech Stack
+## Project Structure
+## Code Standards
+## Testing
+## Deployment
+## Resources
+```
+
+### Include rationale
+
+Explain *why* rules exist:
+
+```markdown
+## Naming Conventions
+
+- Use PascalCase for components: `UserProfile.tsx`
+- Use kebab-case for routes: `user-profile/page.tsx`
+
+Rationale: Next.js App Router uses file-based routing where
+filenames map to URLs, so kebab-case creates clean URLs.
+```
+
+### Document exceptions
+
+```markdown
+## Code Standards
+
+- Avoid default exports
+- Exception: Next.js page/layout files require default exports
+```
+
+### Link to examples
+
+```markdown
+## API Route Pattern
+
+See `app/api/users/route.ts` for a complete example of:
+- Request validation
+- Error handling
+- Response formatting
+- Authentication
+```
+
+### Monorepo structure
+
+For monorepos, combine global and package-specific rules:
+
+**Root `AGENTS.md`:**
+```markdown
+# Monorepo
+
+General conventions for the entire monorepo.
+
+## Packages
+
+Each package has its own `AGENTS.md` with package-specific rules.
+```
+
+**`opencode.json`:**
+```json
+{
+  "instructions": ["packages/*/AGENTS.md"]
+}
+```
+
+**Package-specific `packages/api/AGENTS.md`:**
+```markdown
+# API Package
+
+Express.js API server.
+
+## Routes
+- All routes in `src/routes/`
+- Use router middleware
+- OpenAPI docs in `docs/openapi.yaml`
+```
+
+### Version control
+
+Commit `AGENTS.md` to share with your team:
+
+```bash
+git add AGENTS.md
+git commit -m "Add project rules for AI agents"
+```
+
+Include it in PR reviews when project conventions change.
+
+---
+
+## Global Rules
+
+Use `~/.config/opencode/AGENTS.md` for personal preferences:
+
+```markdown title="~/.config/opencode/AGENTS.md"
+# Personal Preferences
+
+## Communication Style
+- Be concise, avoid unnecessary explanations
+- Show code first, explain only if asked
+- Don't ask for permission, just do it
+
+## Code Preferences
+- Prefer functional programming style
+- Use arrow functions
+- Avoid classes unless necessary
+
+## Workflow
+- Run tests after making changes
+- Use conventional commits
+- Create small, focused commits
+```
+
+Global rules apply to all projects but are overridden by project-specific rules when there's a conflict.
+
+---
+
+## Migration from Cursor
+
+If you're migrating from Cursor, OpenCode can read your existing `.cursorrules` file:
+
+1. **Rename to `AGENTS.md`** (recommended):
+   ```bash
+   mv .cursorrules AGENTS.md
+   ```
+
+2. **Or reference it** in `opencode.json`:
+   ```json
+   {
+     "instructions": [".cursorrules"]
+   }
+   ```
+
+3. **Update formatting** (optional):
+   - Cursor rules are plain text
+   - AGENTS.md supports markdown formatting
+   - Add headers, code blocks, lists for clarity
+
+---
+
+## Examples from Real Projects
+
+### Next.js SaaS
+
+```markdown title="AGENTS.md"
+# SaaS Platform
+
+Next.js 14 SaaS with Stripe payments and Clerk auth.
+
+## Tech Stack
+- Next.js 14 (App Router)
+- TypeScript
+- Drizzle ORM + PostgreSQL
+- Clerk (auth)
+- Stripe (payments)
+- Tailwind + shadcn/ui
+
+## Structure
+- `app/` - Routes and pages
+- `components/` - UI components
+- `lib/` - Business logic
+- `db/` - Database schema
+- `hooks/` - Custom React hooks
+
+## Conventions
+- Server Components by default
+- Client Components only when needed ('use client')
+- Server Actions for mutations
+- Use tRPC-style API routes for complex queries
+
+## Database
+- Schema: snake_case columns, camelCase in TypeScript
+- Relations in `db/schema.ts`
+- Use prepared statements for queries
+
+## Auth
+- Clerk provides `currentUser()` for Server Components
+- Use `useUser()` hook for Client Components
+- Protect API routes with `auth()` middleware
+
+## Payments
+- Stripe webhook handler: `app/api/webhooks/stripe/route.ts`
+- Product IDs in `lib/stripe/products.ts`
+- Subscription check: `lib/subscription.ts`
+```
+
+### Express API
+
+```markdown title="AGENTS.md"
+# Express API
+
+RESTful API with PostgreSQL.
+
+## Stack
+- Express.js
+- TypeScript
+- Drizzle ORM
+- PostgreSQL
+- JWT auth
+- Zod validation
+
+## Structure
+- `src/routes/` - Route handlers
+- `src/middleware/` - Express middleware
+- `src/db/` - Database schema and queries
+- `src/lib/` - Utilities
+
+## Patterns
+- Route handlers return JSON: `{ success: true, data }` or `{ success: false, error }`
+- Use middleware for auth, validation, error handling
+- Validate with Zod schemas
+- Use async/await, no callbacks
+
+## Error Handling
+```typescript
+class AppError extends Error {
+  constructor(public statusCode: number, message: string) {
+    super(message)
+  }
+}
+
+// Throw errors, catch in error middleware
+throw new AppError(400, "Invalid request")
+```
+
+## Database
+- Queries in `src/db/queries/`
+- Use transactions for multiple operations
+- Always use parameterized queries (Drizzle handles this)
+
+## Testing
+- Unit tests for utilities
+- Integration tests for routes
+- Use test database
+- Mock external services
+```
+
+### CLI Tool
+
+```markdown title="AGENTS.md"
+# CLI Tool
+
+Command-line tool built with TypeScript.
+
+## Stack
+- Bun runtime
+- TypeScript
+- Commander.js (CLI framework)
+- Chalk (colors)
+- Inquirer (prompts)
+
+## Structure
+- `src/commands/` - CLI commands
+- `src/lib/` - Core logic
+- `src/utils/` - Helpers
+- `bin/` - Executable entry point
+
+## Commands
+Each command in `src/commands/` exports:
+```typescript
+export default {
+  name: 'command-name',
+  description: '...',
+  options: [...],
+  action: async (args, options) => { }
+}
+```
+
+## Output
+- Use `console.log` for normal output
+- Use `console.error` for errors
+- Use chalk for colors: `chalk.green('Success')`
+- Use spinners for long operations
+
+## Error Handling
+- Catch errors and show user-friendly messages
+- Exit with code 1 on error
+- Use --verbose flag for debug output
+
+## Config
+- Read from `~/.config/tool-name/config.json`
+- Support .env files
+- Allow config overrides via flags
+```

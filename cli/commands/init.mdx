@@ -1,0 +1,371 @@
+---
+title: "In-Session Commands"
+description: "Commands available during an OpenCode session"
+---
+
+## Overview
+
+While OpenCode is running, you can execute special commands by prefixing them with `/`. These commands control the session, invoke custom workflows, and manage your environment.
+
+## Built-in Commands
+
+### Session Control
+
+<AccordionGroup>
+  <Accordion title="/model - Switch AI model">
+    Change the model for the current session.
+    
+    ```
+    /model anthropic/claude-4.5-sonnet
+    /model openai/gpt-4o
+    ```
+    
+    The model persists for the rest of the session. Use the format `provider/model` as shown in [`opencode models`](/cli/models).
+  </Accordion>
+
+  <Accordion title="/agent - Switch agent">
+    Change the agent for the current session.
+    
+    ```
+    /agent typescript-expert
+    /agent default
+    ```
+    
+    Switches to a different agent configuration. See [agent command](/cli/agent) for managing agents.
+  </Accordion>
+
+  <Accordion title="/undo - Revert last message">
+    Undo the last assistant message and return to the previous state.
+    
+    ```
+    /undo
+    ```
+    
+    Removes the last message from history and reverts any changes. Can be used multiple times to step backwards.
+  </Accordion>
+
+  <Accordion title="/redo - Reapply message">
+    Redo a previously undone message.
+    
+    ```
+    /redo
+    ```
+    
+    Reapplies messages that were undone. Only works if you haven't sent new messages after undoing.
+  </Accordion>
+
+  <Accordion title="/share - Share session">
+    Create a shareable link for the current session.
+    
+    ```
+    /share
+    ```
+    
+    Generates a URL (like `https://opncd.ai/s/abc123`) that others can view. See [sharing documentation](/share) for details.
+  </Accordion>
+
+  <Accordion title="/fork - Fork session">
+    Create a new session from the current point.
+    
+    ```
+    /fork
+    ```
+    
+    Creates a branch of the conversation, allowing you to explore different directions without affecting the original.
+  </Accordion>
+</AccordionGroup>
+
+### Custom Commands
+
+You can define custom commands that execute predefined prompts with arguments.
+
+<Accordion title="/init - Initialize project">
+  Built-in command to create or update `AGENTS.md` in your project.
+  
+  ```
+  /init
+  ```
+  
+  This documents your project structure and conventions for OpenCode to reference.
+</Accordion>
+
+<Accordion title="/review - Review changes">
+  Built-in command to review code changes.
+  
+  ```
+  /review
+  /review commit
+  /review branch
+  /review pr
+  ```
+  
+  Reviews uncommitted changes by default, or specify:
+  - `commit` - Review the last commit
+  - `branch` - Review all changes in the current branch
+  - `pr` - Review changes in a pull request
+</Accordion>
+
+## Defining Custom Commands
+
+Create custom commands in `opencode.json`:
+
+```json
+{
+  "command": {
+    "test": {
+      "description": "Run tests and fix failures",
+      "template": "Run the test suite. If any tests fail, analyze the failures and fix them. Test files are in the tests/ directory."
+    },
+    "docs": {
+      "description": "Generate documentation for $1",
+      "template": "Generate comprehensive documentation for $1. Include usage examples, API reference, and best practices.",
+      "agent": "documentation-writer"
+    },
+    "optimize": {
+      "description": "Optimize performance of $1",
+      "template": "Analyze $1 for performance issues. Suggest and implement optimizations. Use profiling tools if available.",
+      "subtask": true
+    }
+  }
+}
+```
+
+### Command Configuration
+
+<ParamField path="description" type="string" required>
+  Short description shown in command autocomplete
+</ParamField>
+
+<ParamField path="template" type="string" required>
+  The prompt template to execute. Can include:
+  - `$1`, `$2`, etc. - Numbered arguments
+  - `$ARGUMENTS` - All arguments as a single string
+</ParamField>
+
+<ParamField path="agent" type="string">
+  Specific agent to use for this command
+</ParamField>
+
+<ParamField path="model" type="string">
+  Specific model to use (format: `provider/model`)
+</ParamField>
+
+<ParamField path="subtask" type="boolean" default="false">
+  Whether to execute as a subtask (uses Task tool)
+</ParamField>
+
+### Using Arguments
+
+Commands can accept arguments:
+
+```json
+{
+  "command": {
+    "refactor": {
+      "description": "Refactor $1 to use $2 pattern",
+      "template": "Refactor the code in $1 to follow the $2 design pattern. Maintain existing functionality while improving structure."
+    }
+  }
+}
+```
+
+Usage:
+```
+/refactor src/app.ts factory
+```
+
+Expands to:
+```
+Refactor the code in src/app.ts to follow the factory design pattern...
+```
+
+### Argument Placeholders
+
+- **`$1`, `$2`, `$3`...** - Individual positional arguments
+- **`$ARGUMENTS`** - All arguments combined into a single string
+
+Example with `$ARGUMENTS`:
+
+```json
+{
+  "command": {
+    "ask": {
+      "description": "Ask the TypeScript expert",
+      "template": "You are a TypeScript expert. Answer this question: $ARGUMENTS",
+      "agent": "typescript-expert"
+    }
+  }
+}
+```
+
+Usage:
+```
+/ask What's the difference between type and interface?
+```
+
+## MCP Prompts
+
+If you have [MCP servers](/mcp-servers) configured, their prompts are automatically available as commands:
+
+```
+/fetch-url https://example.com
+/search-github typescript utility types
+```
+
+MCP prompts:
+- Use the server's prompt name as the command
+- Accept arguments as defined by the server
+- Are dynamically loaded from connected servers
+
+## Skills as Commands
+
+[Skills](/skills) are automatically available as commands:
+
+```
+/mintlify create docs/api/users.mdx
+/supabase generate migration users
+```
+
+Skills:
+- Use the skill name as the command
+- Inject their content as the prompt
+- Can bundle templates, scripts, and references
+
+## Command Discovery
+
+To see available commands:
+
+1. **Autocomplete**: Type `/` in the TUI to see suggestions
+2. **Description**: Commands show their description in autocomplete
+3. **Help**: Commands with arguments show hints (e.g., `$1`, `$2`)
+
+## Command Priority
+
+When multiple sources define a command with the same name:
+
+1. **Built-in commands** (e.g., `/init`, `/review`)
+2. **User-defined commands** (in `opencode.json`)
+3. **MCP prompts**
+4. **Skills**
+
+Higher priority commands override lower ones.
+
+## Examples
+
+### Development Workflow
+
+```json
+{
+  "command": {
+    "commit": {
+      "description": "Create a conventional commit",
+      "template": "Review the staged changes and create a conventional commit message (type(scope): description). Stage files if needed."
+    },
+    "pr": {
+      "description": "Create a pull request",
+      "template": "Create a pull request for the current branch. Write a clear title and description summarizing all changes. Use gh CLI."
+    },
+    "lint": {
+      "description": "Fix linting issues",
+      "template": "Run the linter and fix all issues automatically. For issues that can't be auto-fixed, make manual corrections."
+    }
+  }
+}
+```
+
+### Testing Workflows
+
+```json
+{
+  "command": {
+    "test-file": {
+      "description": "Generate tests for $1",
+      "template": "Create comprehensive unit tests for $1. Use the testing framework already configured in the project. Include edge cases and error scenarios.",
+      "agent": "test-specialist"
+    },
+    "coverage": {
+      "description": "Improve test coverage",
+      "template": "Run test coverage analysis. Identify untested code paths and create tests to improve coverage. Focus on critical business logic."
+    }
+  }
+}
+```
+
+### Documentation
+
+```json
+{
+  "command": {
+    "readme": {
+      "description": "Update README.md",
+      "template": "Update README.md with current project information. Include: overview, installation, usage, examples, and contribution guidelines."
+    },
+    "api-docs": {
+      "description": "Generate API documentation for $1",
+      "template": "Generate API documentation for $1. Include all public methods, parameters, return types, and usage examples. Use JSDoc/TSDoc format.",
+      "agent": "documentation-writer"
+    }
+  }
+}
+```
+
+### Refactoring
+
+```json
+{
+  "command": {
+    "extract": {
+      "description": "Extract $1 from $2",
+      "template": "Extract $1 from $2 into a separate, reusable module. Maintain the same interface and functionality. Update imports."
+    },
+    "modernize": {
+      "description": "Modernize $1",
+      "template": "Modernize $1 using current best practices. Update syntax, patterns, and dependencies. Ensure backwards compatibility."
+    }
+  }
+}
+```
+
+## Running Commands Programmatically
+
+Use the `run` command with `--command` flag:
+
+```bash
+opencode run --command test "src/app.test.ts"
+```
+
+This executes the `test` command with the given arguments without opening the TUI.
+
+## Best Practices
+
+<CardGroup>
+  <Card title="Clear descriptions" icon="message">
+    Write concise descriptions that explain when to use each command
+  </Card>
+  <Card title="Specific templates" icon="bullseye">
+    Be explicit in templates about what the agent should do
+  </Card>
+  <Card title="Use arguments" icon="dollar-sign">
+    Make commands flexible with argument placeholders
+  </Card>
+  <Card title="Choose agents" icon="user-gear">
+    Assign specialized agents to appropriate commands
+  </Card>
+</CardGroup>
+
+## Related Topics
+
+<CardGroup cols={2}>
+  <Card title="Commands Config" icon="gear" href="/commands">
+    Learn more about command configuration
+  </Card>
+  <Card title="Agents" icon="robot" href="/agents">
+    Create specialized agents
+  </Card>
+  <Card title="MCP Servers" icon="server" href="/mcp-servers">
+    Add MCP prompts as commands
+  </Card>
+  <Card title="Skills" icon="puzzle-piece" href="/skills">
+    Install and use skills
+  </Card>
+</CardGroup>

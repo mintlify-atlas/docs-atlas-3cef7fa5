@@ -1,0 +1,622 @@
+---
+title: 'Plugin Tools'
+description: 'Create custom tools that AI agents can use'
+---
+
+## Overview
+
+Tools are functions that AI agents can call to perform actions. OpenCode's plugin system makes it easy to create custom tools with type-safe arguments and execution contexts.
+
+## Basic Tool
+
+Use the `tool()` helper to define a tool:
+
+```typescript
+import { Plugin, tool } from '@opencode-ai/plugin'
+
+export const MyPlugin: Plugin = async (ctx) => {
+  return {
+    tool: {
+      my_tool: tool({
+        description: 'Description of what the tool does',
+        args: {
+          param: tool.schema.string().describe('Parameter description'),
+        },
+        async execute(args, context) {
+          // Tool implementation
+          return 'Result as string'
+        },
+      }),
+    },
+  }
+}
+```
+
+## Tool Structure
+
+### Description
+
+The description tells the AI when and how to use the tool. Be clear and specific:
+
+```typescript
+tool({
+  description: 'Search for user records in the database by name, email, or ID',
+  // ...
+})
+```
+
+<Tip>
+  Good descriptions help the AI understand when to use your tool. Include:
+  - What the tool does
+  - When to use it
+  - What kind of input it expects
+</Tip>
+
+### Arguments
+
+Define arguments using Zod schemas via `tool.schema`:
+
+```typescript
+import { tool } from '@opencode-ai/plugin'
+
+tool({
+  description: 'Example tool',
+  args: {
+    // Required string
+    name: tool.schema.string().describe('User name'),
+    
+    // Optional number
+    age: tool.schema.number().optional().describe('User age'),
+    
+    // String with constraints
+    email: tool.schema
+      .string()
+      .email()
+      .describe('Email address'),
+    
+    // Enum
+    role: tool.schema
+      .enum(['admin', 'user', 'guest'])
+      .describe('User role'),
+    
+    // Boolean
+    active: tool.schema.boolean().describe('Is user active'),
+    
+    // Array
+    tags: tool.schema
+      .array(tool.schema.string())
+      .describe('User tags'),
+    
+    // Object
+    settings: tool.schema.object({
+      theme: tool.schema.string(),
+      notifications: tool.schema.boolean(),
+    }).optional().describe('User settings'),
+  },
+  async execute(args, context) {
+    // args is fully typed based on your schema
+    console.log(args.name)      // string
+    console.log(args.age)       // number | undefined
+    console.log(args.role)      // 'admin' | 'user' | 'guest'
+    return 'Success'
+  },
+})
+```
+
+<Note>
+  Always add `.describe()` to your arguments. These descriptions help the AI understand what values to provide.
+</Note>
+
+### Execute Function
+
+The execute function receives typed arguments and a context object:
+
+```typescript
+tool({
+  description: 'Process data',
+  args: {
+    data: tool.schema.string().describe('Data to process'),
+  },
+  async execute(args, context) {
+    // args.data is typed as string
+    
+    // Access context
+    const sessionID = context.sessionID
+    const directory = context.directory
+    
+    // Check for cancellation
+    if (context.abort.aborted) {
+      return 'Cancelled'
+    }
+    
+    // Update tool metadata
+    context.metadata({
+      title: 'Processing...',
+      metadata: { status: 'running' },
+    })
+    
+    // Do work
+    const result = await processData(args.data)
+    
+    // Must return a string
+    return JSON.stringify(result)
+  },
+})
+```
+
+## Tool Context
+
+The execution context provides information and utilities:
+
+### Context Properties
+
+<ParamField path="sessionID" type="string">
+  Current session ID
+</ParamField>
+
+<ParamField path="messageID" type="string">
+  Current message ID
+</ParamField>
+
+<ParamField path="agent" type="string">
+  Current agent name (e.g., `'build'`, `'plan'`)
+</ParamField>
+
+<ParamField path="directory" type="string">
+  Current project directory. Use this instead of `process.cwd()` for path resolution.
+</ParamField>
+
+<ParamField path="worktree" type="string">
+  Project worktree root. Useful for generating stable relative paths.
+</ParamField>
+
+<ParamField path="abort" type="AbortSignal">
+  Signal for cancellation. Check `abort.aborted` before long operations.
+</ParamField>
+
+### Context Methods
+
+#### metadata()
+
+Update tool status and metadata:
+
+```typescript
+context.metadata({
+  title: 'Current operation',
+  metadata: {
+    progress: 50,
+    status: 'running',
+  },
+})
+```
+
+<ParamField path="title" type="string" optional>
+  Tool status title shown in UI
+</ParamField>
+
+<ParamField path="metadata" type="Record<string, any>" optional>
+  Custom metadata attached to the tool execution
+</ParamField>
+
+#### ask()
+
+Request permission from the user:
+
+```typescript
+await context.ask({
+  permission: 'file_write',
+  patterns: ['src/**/*.ts'],
+  always: [],
+  metadata: {
+    operation: 'write',
+    files: ['src/index.ts'],
+  },
+})
+```
+
+<ParamField path="permission" type="string" required>
+  Permission type
+</ParamField>
+
+<ParamField path="patterns" type="string[]" required>
+  Patterns affected by this permission
+</ParamField>
+
+<ParamField path="always" type="string[]" required>
+  Patterns to always allow (empty for none)
+</ParamField>
+
+<ParamField path="metadata" type="Record<string, any>" required>
+  Additional context for the permission request
+</ParamField>
+
+## Example Tools
+
+### Database Query Tool
+
+```typescript
+import { Plugin, tool } from '@opencode-ai/plugin'
+import { Database } from './db'
+
+export const DatabasePlugin: Plugin = async (ctx) => {
+  const db = new Database(ctx.directory)
+  
+  return {
+    tool: {
+      query_database: tool({
+        description: 'Execute a SQL query on the project database. Use for searching, counting, or analyzing data.',
+        args: {
+          query: tool.schema
+            .string()
+            .describe('SQL query to execute. Must be a SELECT statement.'),
+          limit: tool.schema
+            .number()
+            .min(1)
+            .max(1000)
+            .optional()
+            .describe('Maximum number of rows to return (default 100)'),
+        },
+        async execute(args, context) {
+          // Validate query is SELECT only
+          if (!args.query.trim().toLowerCase().startsWith('select')) {
+            return 'Error: Only SELECT queries are allowed'
+          }
+          
+          context.metadata({
+            title: 'Querying database',
+            metadata: { query: args.query },
+          })
+          
+          try {
+            const results = await db.query(args.query, args.limit ?? 100)
+            
+            return JSON.stringify({
+              rows: results.length,
+              data: results,
+            }, null, 2)
+          } catch (error) {
+            return `Error: ${error.message}`
+          }
+        },
+      }),
+      
+      get_schema: tool({
+        description: 'Get the database schema showing all tables and their columns',
+        args: {},
+        async execute(args, context) {
+          const schema = await db.getSchema()
+          return JSON.stringify(schema, null, 2)
+        },
+      }),
+    },
+  }
+}
+```
+
+### API Request Tool
+
+```typescript
+import { Plugin, tool } from '@opencode-ai/plugin'
+
+export const ApiPlugin: Plugin = async (ctx) => {
+  return {
+    tool: {
+      api_request: tool({
+        description: 'Make HTTP requests to external APIs. Supports GET, POST, PUT, PATCH, DELETE.',
+        args: {
+          method: tool.schema
+            .enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
+            .describe('HTTP method'),
+          url: tool.schema
+            .string()
+            .url()
+            .describe('Full URL to request'),
+          headers: tool.schema
+            .record(tool.schema.string())
+            .optional()
+            .describe('HTTP headers as key-value pairs'),
+          body: tool.schema
+            .string()
+            .optional()
+            .describe('Request body (for POST/PUT/PATCH)'),
+        },
+        async execute(args, context) {
+          context.metadata({
+            title: `${args.method} ${args.url}`,
+          })
+          
+          try {
+            const response = await fetch(args.url, {
+              method: args.method,
+              headers: args.headers,
+              body: args.body,
+              signal: context.abort,
+            })
+            
+            const data = await response.text()
+            
+            return JSON.stringify({
+              status: response.status,
+              statusText: response.statusText,
+              headers: Object.fromEntries(response.headers),
+              body: data,
+            }, null, 2)
+          } catch (error) {
+            if (error.name === 'AbortError') {
+              return 'Request cancelled'
+            }
+            return `Error: ${error.message}`
+          }
+        },
+      }),
+    },
+  }
+}
+```
+
+### File Processing Tool
+
+```typescript
+import { Plugin, tool } from '@opencode-ai/plugin'
+import { readFile, writeFile } from 'fs/promises'
+import { join } from 'path'
+
+export const FilePlugin: Plugin = async (ctx) => {
+  return {
+    tool: {
+      process_file: tool({
+        description: 'Process a file with custom transformation',
+        args: {
+          path: tool.schema
+            .string()
+            .describe('Relative path to the file'),
+          operation: tool.schema
+            .enum(['uppercase', 'lowercase', 'reverse'])
+            .describe('Transformation to apply'),
+          write: tool.schema
+            .boolean()
+            .optional()
+            .describe('Write result back to file (default false)'),
+        },
+        async execute(args, context) {
+          const filePath = join(context.directory, args.path)
+          
+          // Request permission if writing
+          if (args.write) {
+            await context.ask({
+              permission: 'file_write',
+              patterns: [args.path],
+              always: [],
+              metadata: { operation: 'transform' },
+            })
+          }
+          
+          context.metadata({
+            title: `Processing ${args.path}`,
+            metadata: { operation: args.operation },
+          })
+          
+          // Read file
+          const content = await readFile(filePath, 'utf-8')
+          
+          // Transform
+          let result: string
+          switch (args.operation) {
+            case 'uppercase':
+              result = content.toUpperCase()
+              break
+            case 'lowercase':
+              result = content.toLowerCase()
+              break
+            case 'reverse':
+              result = content.split('').reverse().join('')
+              break
+          }
+          
+          // Write if requested
+          if (args.write) {
+            await writeFile(filePath, result, 'utf-8')
+            return `Transformed and wrote ${args.path}`
+          }
+          
+          return result
+        },
+      }),
+    },
+  }
+}
+```
+
+### Shell Command Tool
+
+```typescript
+import { Plugin, tool } from '@opencode-ai/plugin'
+
+export const ShellPlugin: Plugin = async (ctx) => {
+  return {
+    tool: {
+      run_command: tool({
+        description: 'Run a custom shell command in the project directory',
+        args: {
+          command: tool.schema
+            .string()
+            .describe('Command to execute'),
+          cwd: tool.schema
+            .string()
+            .optional()
+            .describe('Working directory (relative to project root)'),
+        },
+        async execute(args, context) {
+          const cwd = args.cwd 
+            ? join(context.directory, args.cwd)
+            : context.directory
+          
+          context.metadata({
+            title: `Running: ${args.command}`,
+          })
+          
+          try {
+            // Use the shell helper from context
+            const result = await ctx.$`cd ${cwd} && ${args.command}`
+            
+            return JSON.stringify({
+              exitCode: result.exitCode,
+              stdout: result.stdout.toString(),
+              stderr: result.stderr.toString(),
+            }, null, 2)
+          } catch (error) {
+            return `Error: ${error.message}`
+          }
+        },
+      }),
+    },
+  }
+}
+```
+
+## Best Practices
+
+### 1. Clear Descriptions
+
+Be specific about what your tool does:
+
+```typescript
+// Good
+description: 'Search GitHub repositories by name, language, or topic. Returns repository name, description, stars, and URL.'
+
+// Bad
+description: 'Search GitHub'
+```
+
+### 2. Validate Input
+
+Use Zod constraints to validate arguments:
+
+```typescript
+args: {
+  email: tool.schema.string().email(),
+  age: tool.schema.number().min(0).max(150),
+  url: tool.schema.string().url(),
+}
+```
+
+### 3. Handle Errors
+
+Return error messages as strings:
+
+```typescript
+try {
+  const result = await operation()
+  return JSON.stringify(result)
+} catch (error) {
+  return `Error: ${error.message}`
+}
+```
+
+### 4. Check Cancellation
+
+Respect the abort signal:
+
+```typescript
+if (context.abort.aborted) {
+  return 'Operation cancelled'
+}
+
+// Or pass to async operations
+await fetch(url, { signal: context.abort })
+```
+
+### 5. Update Metadata
+
+Keep the UI informed:
+
+```typescript
+context.metadata({ title: 'Processing...' })
+
+for (const item of items) {
+  context.metadata({
+    title: `Processing ${item.name}`,
+    metadata: { current: item.name },
+  })
+  await process(item)
+}
+
+context.metadata({ title: 'Complete' })
+```
+
+### 6. Use Context Paths
+
+Always use `context.directory` for path resolution:
+
+```typescript
+// Good
+const filePath = join(context.directory, args.path)
+
+// Bad
+const filePath = join(process.cwd(), args.path)
+```
+
+### 7. Return Structured Data
+
+Return JSON for complex data:
+
+```typescript
+return JSON.stringify({
+  success: true,
+  data: results,
+  count: results.length,
+}, null, 2)
+```
+
+### 8. Request Permissions
+
+Ask before destructive operations:
+
+```typescript
+if (args.delete) {
+  await context.ask({
+    permission: 'file_delete',
+    patterns: [args.path],
+    always: [],
+    metadata: { operation: 'delete' },
+  })
+}
+```
+
+## Debugging Tools
+
+Add logging to debug your tools:
+
+```typescript
+tool({
+  description: 'Debug tool',
+  args: { input: tool.schema.string() },
+  async execute(args, context) {
+    console.log('Tool called:', context.sessionID)
+    console.log('Arguments:', args)
+    console.log('Directory:', context.directory)
+    
+    // Use the SDK client from plugin context
+    await ctx.client.app.log({
+      body: {
+        service: 'my-tool',
+        level: 'info',
+        message: `Executed with ${args.input}`,
+      },
+    })
+    
+    return 'Debug info logged'
+  },
+})
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Plugin Examples" icon="code" href="/sdk/plugin-examples">
+    See complete plugin examples
+  </Card>
+  <Card title="Plugin API" icon="book" href="/sdk/plugin-api">
+    Learn about other plugin hooks
+  </Card>
+</CardGroup>

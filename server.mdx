@@ -1,0 +1,522 @@
+---
+title: 'Server Architecture'
+description: 'Deep dive into the OpenCode server: HTTP API, authentication, mDNS discovery, and programmatic control'
+icon: 'server'
+---
+
+The `opencode serve` command runs a headless HTTP server that exposes an OpenAPI-compliant REST API. This architecture enables multiple clients (TUI, web, IDE plugins, custom integrations) to interact with the same OpenCode instance programmatically.
+
+## Architecture Overview
+
+When you run `opencode`, it starts both:
+- **Server**: HTTP API server (Hono + Bun runtime) exposing OpenAPI 3.1 endpoints
+- **TUI Client**: Terminal interface that communicates with the server via HTTP
+
+This separation allows:
+- Multiple simultaneous clients connecting to one server
+- Programmatic control via HTTP APIs
+- Real-time event streaming via Server-Sent Events (SSE)
+- Cross-platform compatibility (local, remote, containerized)
+
+<Note>
+The TUI and server communicate over HTTP on `localhost`. When using proxies, you **must** bypass `localhost` and `127.0.0.1` to prevent routing loops.
+</Note>
+
+## Starting the Server
+
+### Standalone Mode
+
+Run a dedicated server without the TUI:
+
+```bash
+opencode serve --port 4096 --hostname 127.0.0.1
+```
+
+<ParamField path="--port" type="number" default="4096">
+  Port to listen on. Use `0` to auto-assign a free port.
+</ParamField>
+
+<ParamField path="--hostname" type="string" default="127.0.0.1">
+  Hostname/IP to bind to. Use `0.0.0.0` to accept connections from any interface (requires authentication).
+</ParamField>
+
+<ParamField path="--mdns" type="boolean" default="false">
+  Enable mDNS (Bonjour) service discovery for local network clients.
+</ParamField>
+
+<ParamField path="--mdns-domain" type="string" default="opencode.local">
+  Custom domain name for the mDNS service announcement.
+</ParamField>
+
+<ParamField path="--cors" type="string[]" default="[]">
+  Additional CORS origins to allow. Can be specified multiple times.
+</ParamField>
+
+### Example with CORS
+
+```bash
+opencode serve \
+  --port 4096 \
+  --hostname 0.0.0.0 \
+  --cors http://localhost:5173 \
+  --cors https://app.example.com
+```
+
+### Connect to Existing Server
+
+When starting the TUI, specify connection details:
+
+```bash
+opencode --hostname 127.0.0.1 --port 4096
+```
+
+The TUI will connect to the existing server instead of starting a new one.
+
+## Authentication
+
+### HTTP Basic Auth
+
+Protect your server with username/password authentication:
+
+```bash
+export OPENCODE_SERVER_USERNAME="admin"  # Optional, defaults to "opencode"
+export OPENCODE_SERVER_PASSWORD="secure-password-123"
+opencode serve --hostname 0.0.0.0
+```
+
+<Warning>
+Always use authentication when binding to `0.0.0.0` or exposing the server beyond localhost.
+</Warning>
+
+Authentication applies to:
+- `opencode serve` (standalone server)
+- `opencode web` (web interface + server)
+
+HTTP clients must include credentials:
+
+```bash
+curl -u admin:secure-password-123 http://localhost:4096/global/health
+```
+
+### Authentication Flow
+
+1. Server reads `OPENCODE_SERVER_PASSWORD` at startup
+2. All requests (except OPTIONS preflight) require HTTP Basic Auth
+3. Username defaults to `opencode` or uses `OPENCODE_SERVER_USERNAME`
+4. Invalid credentials return `401 Unauthorized`
+
+## OpenAPI Specification
+
+The server publishes a complete OpenAPI 3.1 spec:
+
+```bash
+curl http://localhost:4096/doc
+```
+
+This returns an interactive Swagger UI for exploring endpoints.
+
+### Using the Spec
+
+<AccordionGroup>
+  <Accordion title="Generate SDK clients">
+    Use tools like `openapi-generator` or `swagger-codegen` to generate type-safe clients:
+    
+    ```bash
+    # Fetch the spec
+    curl http://localhost:4096/doc -H "Accept: application/json" > opencode-api.json
+    
+    # Generate TypeScript client
+    openapi-generator-cli generate \
+      -i opencode-api.json \
+      -g typescript-axios \
+      -o ./opencode-client
+    ```
+  </Accordion>
+  
+  <Accordion title="Import into Postman/Insomnia">
+    1. Open Postman/Insomnia
+    2. Import → OpenAPI URL
+    3. Enter: `http://localhost:4096/doc?format=json`
+    4. All endpoints will be available for testing
+  </Accordion>
+  
+  <Accordion title="Validate API contracts">
+    Use the spec for contract testing:
+    
+    ```typescript
+    import { OpenAPIValidator } from 'express-openapi-validator';
+    
+    const spec = await fetch('http://localhost:4096/doc?format=json').then(r => r.json());
+    // Use spec for validation in tests
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Core API Endpoints
+
+### Health & Events
+
+<CodeGroup>
+```bash GET /global/health
+curl http://localhost:4096/global/health
+```
+
+```json Response
+{
+  "healthy": true,
+  "version": "1.2.3"
+}
+```
+</CodeGroup>
+
+<ResponseField name="healthy" type="boolean">
+  Always `true` if server is running.
+</ResponseField>
+
+<ResponseField name="version" type="string">
+  OpenCode version (e.g., `1.2.3`).
+</ResponseField>
+
+### Real-time Events (SSE)
+
+<CodeGroup>
+```bash GET /global/event
+curl -N http://localhost:4096/global/event
+```
+
+```text Stream Output
+data: {"type":"server.connected","properties":{}}
+
+data: {"type":"session.created","properties":{"sessionID":"abc123"}}
+
+data: {"type":"server.heartbeat","properties":{}}
+```
+</CodeGroup>
+
+Server-Sent Events stream providing:
+- `server.connected` - Initial connection event
+- `server.heartbeat` - Keepalive every 10 seconds
+- All bus events (session lifecycle, file changes, etc.)
+
+<Note>
+SSE connections include `X-Accel-Buffering: no` header to prevent proxy buffering issues.
+</Note>
+
+### Project Context
+
+<CodeGroup>
+```bash GET /project/current
+curl http://localhost:4096/project/current?directory=/path/to/project
+```
+
+```json Response
+{
+  "id": "project-123",
+  "name": "my-app",
+  "path": "/path/to/project",
+  "isGit": true
+}
+```
+</CodeGroup>
+
+Every request can include a `directory` parameter (query or header) to scope operations:
+
+```bash
+# Via query parameter
+curl "http://localhost:4096/session?directory=/workspace/app"
+
+# Via header
+curl -H "X-Opencode-Directory: /workspace/app" http://localhost:4096/session
+```
+
+### Sessions
+
+Create and manage AI conversation sessions:
+
+<CodeGroup>
+```bash POST /session
+curl -X POST http://localhost:4096/session \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Add user authentication"}'
+```
+
+```json Response
+{
+  "id": "session-abc123",
+  "title": "Add user authentication",
+  "createdAt": 1708387200000,
+  "updatedAt": 1708387200000,
+  "parentID": null,
+  "shareID": null
+}
+```
+</CodeGroup>
+
+<ParamField body="title" type="string" optional>
+  Session title. Auto-generated if omitted.
+</ParamField>
+
+<ParamField body="parentID" type="string" optional>
+  Parent session ID for creating branched conversations.
+</ParamField>
+
+### Send Messages
+
+<CodeGroup>
+```bash POST /session/:id/message
+curl -X POST http://localhost:4096/session/abc123/message \
+  -H "Content-Type: application/json" \
+  -d '{
+    "parts": [
+      {"type": "text", "text": "Create a login form"}
+    ]
+  }'
+```
+
+```json Response
+{
+  "info": {
+    "id": "msg-xyz",
+    "role": "assistant",
+    "createdAt": 1708387260000
+  },
+  "parts": [
+    {
+      "type": "text",
+      "text": "I'll create a login form..."
+    },
+    {
+      "type": "tool_use",
+      "name": "write",
+      "input": {...}
+    }
+  ]
+}
+```
+</CodeGroup>
+
+<ParamField body="parts" type="Part[]" required>
+  Array of message parts (text, images, files).
+</ParamField>
+
+<ParamField body="model" type="string" optional>
+  Override model (format: `provider/model`, e.g., `openai/gpt-4.1`).
+</ParamField>
+
+<ParamField body="agent" type="string" optional>
+  Agent to use (e.g., `task`, `research`).
+</ParamField>
+
+<ParamField body="noReply" type="boolean" optional>
+  Send message without waiting for AI response.
+</ParamField>
+
+### Async Messaging
+
+For fire-and-forget messages, use the async endpoint:
+
+```bash
+curl -X POST http://localhost:4096/session/abc123/prompt_async \
+  -H "Content-Type: application/json" \
+  -d '{"parts": [{"type": "text", "text": "Fix the bug"}]}'
+# Returns: 204 No Content immediately
+```
+
+Monitor progress via event stream (`GET /event`).
+
+## TUI Control API
+
+Programmatically control the TUI (used by IDE plugins):
+
+<CodeGroup>
+```bash POST /tui/append-prompt
+curl -X POST http://localhost:4096/tui/append-prompt \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Add error handling"}'
+```
+
+```bash POST /tui/submit-prompt
+curl -X POST http://localhost:4096/tui/submit-prompt
+```
+</CodeGroup>
+
+Available TUI endpoints:
+- `/tui/append-prompt` - Add text to prompt input
+- `/tui/submit-prompt` - Submit current prompt
+- `/tui/clear-prompt` - Clear prompt input
+- `/tui/open-sessions` - Open session selector
+- `/tui/open-models` - Open model selector
+- `/tui/show-toast` - Display notification
+- `/tui/execute-command` - Run slash command
+
+## Advanced Features
+
+### File Operations
+
+<CodeGroup>
+```bash Find in Files
+curl "http://localhost:4096/find?pattern=async%20function"
+```
+
+```bash Find Files
+curl "http://localhost:4096/find/file?query=auth&type=file&limit=10"
+```
+
+```bash Read File
+curl "http://localhost:4096/file/content?path=/src/index.ts"
+```
+</CodeGroup>
+
+### LSP & Formatters
+
+```bash
+# LSP server status
+curl http://localhost:4096/lsp
+
+# Formatter status
+curl http://localhost:4096/formatter
+
+# MCP server status
+curl http://localhost:4096/mcp
+```
+
+### Session Sharing
+
+<CodeGroup>
+```bash Share Session
+curl -X POST http://localhost:4096/session/abc123/share
+```
+
+```json Response
+{
+  "id": "abc123",
+  "shareID": "s_unique123",
+  "shareURL": "https://opncd.ai/s/s_unique123",
+  ...
+}
+```
+</CodeGroup>
+
+<CodeGroup>
+```bash Unshare Session
+curl -X DELETE http://localhost:4096/session/abc123/share
+```
+</CodeGroup>
+
+## Error Handling
+
+The server returns structured errors:
+
+<CodeGroup>
+```json 400 Bad Request
+{
+  "success": false,
+  "errors": [
+    {
+      "field": "parts",
+      "message": "Required"
+    }
+  ],
+  "data": null
+}
+```
+
+```json 404 Not Found
+{
+  "name": "NotFoundError",
+  "message": "Session not found",
+  "data": {
+    "sessionID": "invalid-id"
+  }
+}
+```
+
+```json 500 Internal Error
+{
+  "name": "UnknownError",
+  "message": "Stack trace...",
+  "data": {}
+}
+```
+</CodeGroup>
+
+All errors follow the `NamedError` pattern with:
+- `name` - Error class name
+- `message` - Human-readable description
+- `data` - Contextual error details
+
+## Server Implementation Details
+
+### Technology Stack
+
+- **Runtime**: Bun (high-performance JavaScript runtime)
+- **Framework**: Hono (lightweight HTTP framework)
+- **WebSockets**: Native Bun websocket support
+- **SSE**: Hono streaming utilities
+- **Validation**: Zod schemas with hono-openapi
+
+### CORS Policy
+
+Default allowed origins:
+- `http://localhost:*` (any port)
+- `http://127.0.0.1:*` (any port)
+- `tauri://localhost` (Tauri desktop apps)
+- `https://*.opencode.ai` (official web clients)
+- Custom origins via `--cors` flag
+
+### Request Lifecycle
+
+1. **CORS preflight** - OPTIONS requests bypass auth
+2. **Authentication** - HTTP Basic Auth if `OPENCODE_SERVER_PASSWORD` is set
+3. **Logging** - Request method and path logged (except `/log` endpoint)
+4. **Instance resolution** - Extract `directory` from query/header, load project instance
+5. **Route handler** - Execute endpoint logic
+6. **Error handling** - Convert exceptions to structured JSON responses
+7. **Response** - JSON or SSE stream
+
+### Performance Characteristics
+
+- **Idle timeout**: Disabled (connections can stay open indefinitely)
+- **SSE heartbeat**: 10-second intervals
+- **Port fallback**: If `--port 0`, tries 4096 first, then random
+- **Graceful shutdown**: Unpublishes mDNS before stopping
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Custom Clients" icon="code">
+    Build custom UI clients (mobile apps, web dashboards) using the HTTP API.
+  </Card>
+  
+  <Card title="CI/CD Integration" icon="robot">
+    Automate code review, testing, and documentation generation in pipelines.
+  </Card>
+  
+  <Card title="IDE Plugins" icon="puzzle-piece">
+    Create editor extensions that communicate with OpenCode server.
+  </Card>
+  
+  <Card title="Remote Development" icon="cloud">
+    Run OpenCode server on remote machines, connect from local clients.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Network Configuration" icon="network-wired" href="/network">
+    Configure proxies, certificates, and mDNS discovery.
+  </Card>
+  
+  <Card title="Session Sharing" icon="share-nodes" href="/share">
+    Learn about sharing sessions and collaboration features.
+  </Card>
+  
+  <Card title="JavaScript SDK" icon="js" href="/sdk">
+    Use the official TypeScript/JavaScript SDK for type-safe API access.
+  </Card>
+  
+  <Card title="Troubleshooting" icon="wrench" href="/troubleshooting">
+    Diagnose and fix common server issues.
+  </Card>
+</CardGroup>

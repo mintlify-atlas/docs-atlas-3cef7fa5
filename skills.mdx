@@ -1,0 +1,882 @@
+---
+title: "Agent Skills"
+description: "Define reusable behavior via SKILL.md definitions"
+---
+
+Agent skills let OpenCode discover reusable instructions from your repo or home directory.
+Skills are loaded on-demand via the native `skill` tool—agents see available skills and can load the full content when needed.
+
+---
+
+## Place files
+
+Create one folder per skill name and put a `SKILL.md` inside it.
+OpenCode searches these locations:
+
+- Project config: `.opencode/skills/<name>/SKILL.md`
+- Global config: `~/.config/opencode/skills/<name>/SKILL.md`
+- Project Claude-compatible: `.claude/skills/<name>/SKILL.md`
+- Global Claude-compatible: `~/.claude/skills/<name>/SKILL.md`
+- Project agent-compatible: `.agents/skills/<name>/SKILL.md`
+- Global agent-compatible: `~/.agents/skills/<name>/SKILL.md`
+
+<Steps>
+
+<Step title="Create skill directory">
+Create a directory for your skill:
+
+```bash
+mkdir -p .opencode/skills/git-release
+```
+</Step>
+
+<Step title="Create SKILL.md file">
+Create a `SKILL.md` file with frontmatter and content:
+
+```markdown title=".opencode/skills/git-release/SKILL.md"
+---
+name: git-release
+description: Create consistent releases and changelogs
+license: MIT
+compatibility: opencode
+metadata:
+  audience: maintainers
+  workflow: github
+---
+
+## What I do
+
+- Draft release notes from merged PRs
+- Propose a version bump
+- Provide a copy-pasteable `gh release create` command
+
+## When to use me
+
+Use this when you are preparing a tagged release.
+Ask clarifying questions if the target versioning scheme is unclear.
+```
+</Step>
+
+<Step title="Use the skill">
+The agent can now load this skill:
+
+```
+Load the git-release skill and help me create a release.
+```
+</Step>
+
+</Steps>
+
+---
+
+## Understand discovery
+
+For project-local paths, OpenCode walks up from your current working directory until it reaches the git worktree.
+It loads any matching `skills/*/SKILL.md` in `.opencode/` and any matching `.claude/skills/*/SKILL.md` or `.agents/skills/*/SKILL.md` along the way.
+
+Global definitions are also loaded from `~/.config/opencode/skills/*/SKILL.md`, `~/.claude/skills/*/SKILL.md`, and `~/.agents/skills/*/SKILL.md`.
+
+### Discovery order
+
+Skills are discovered in this order:
+
+1. **Global external skills** (`.claude/skills/`, `.agents/skills/` in home directory)
+2. **Project external skills** (walking up from current directory to worktree)
+3. **OpenCode skills** (`.opencode/skills/` directories)
+4. **Additional paths** (from `skills.paths` config)
+5. **Remote skills** (from `skills.urls` config)
+
+Later sources can override earlier ones if they have the same skill name.
+
+### Discovery implementation
+
+The skill discovery system:
+
+```ts
+// From skill/skill.ts
+export const state = Instance.state(async () => {
+  const skills: Record<string, Info> = {}
+  const dirs = new Set<string>()
+
+  // Scan external skill directories (.claude/skills/, .agents/skills/)
+  if (!Flag.OPENCODE_DISABLE_EXTERNAL_SKILLS) {
+    // Global skills first
+    for (const dir of EXTERNAL_DIRS) {
+      const root = path.join(Global.Path.home, dir)
+      await scanExternal(root, "global")
+    }
+    
+    // Project skills (walking up directory tree)
+    for await (const root of Filesystem.up({
+      targets: EXTERNAL_DIRS,
+      start: Instance.directory,
+      stop: Instance.worktree,
+    })) {
+      await scanExternal(root, "project")
+    }
+  }
+
+  // Scan .opencode/skill/ directories
+  for (const dir of await Config.directories()) {
+    const matches = await Glob.scan(OPENCODE_SKILL_PATTERN, { cwd: dir })
+    for (const match of matches) await addSkill(match)
+  }
+
+  // Scan additional paths from config
+  for (const skillPath of config.skills?.paths ?? []) {
+    const resolved = resolveSkillPath(skillPath)
+    const matches = await Glob.scan(SKILL_PATTERN, { cwd: resolved })
+    for (const match of matches) await addSkill(match)
+  }
+
+  // Download and load skills from URLs
+  for (const url of config.skills?.urls ?? []) {
+    const list = await Discovery.pull(url)
+    for (const dir of list) {
+      const matches = await Glob.scan(SKILL_PATTERN, { cwd: dir })
+      for (const match of matches) await addSkill(match)
+    }
+  }
+
+  return { skills, dirs }
+})
+```
+
+---
+
+## Write frontmatter
+
+Each `SKILL.md` must start with YAML frontmatter.
+Only these fields are recognized:
+
+- `name` (required)
+- `description` (required)
+- `license` (optional)
+- `compatibility` (optional)
+- `metadata` (optional, string-to-string map)
+
+Unknown frontmatter fields are ignored.
+
+```yaml
+---
+name: git-release
+description: Create consistent releases and changelogs
+license: MIT
+compatibility: opencode
+metadata:
+  audience: maintainers
+  workflow: github
+  version: "1.0"
+---
+```
+
+---
+
+## Validate names
+
+`name` must:
+
+- Be 1–64 characters
+- Be lowercase alphanumeric with single hyphen separators
+- Not start or end with `-`
+- Not contain consecutive `--`
+- Match the directory name that contains `SKILL.md`
+
+Equivalent regex:
+
+```text
+^[a-z0-9]+(-[a-z0-9]+)*$
+```
+
+Valid names:
+- `git-release`
+- `code-review`
+- `test-generator`
+- `api-docs`
+
+Invalid names:
+- `Git-Release` (uppercase)
+- `-git-release` (starts with hyphen)
+- `git--release` (consecutive hyphens)
+- `git_release` (underscore)
+
+---
+
+## Follow length rules
+
+`description` must be 1-1024 characters.
+Keep it specific enough for the agent to choose correctly.
+
+```yaml
+# Good
+description: Create consistent releases and changelogs from merged PRs
+
+# Bad (too vague)
+description: Help with releases
+
+# Bad (too long - over 1024 chars)
+description: This skill helps you create releases by analyzing...
+```
+
+---
+
+## Use an example
+
+Create `.opencode/skills/git-release/SKILL.md` like this:
+
+```markdown
+---
+name: git-release
+description: Create consistent releases and changelogs
+license: MIT
+compatibility: opencode
+metadata:
+  audience: maintainers
+  workflow: github
+---
+
+## What I do
+
+- Draft release notes from merged PRs
+- Propose a version bump
+- Provide a copy-pasteable `gh release create` command
+
+## When to use me
+
+Use this when you are preparing a tagged release.
+Ask clarifying questions if the target versioning scheme is unclear.
+```
+
+---
+
+## Recognize tool description
+
+OpenCode lists available skills in the `skill` tool description.
+Each entry includes the skill name and description:
+
+```xml
+<available_skills>
+  <skill>
+    <name>git-release</name>
+    <description>Create consistent releases and changelogs</description>
+  </skill>
+</available_skills>
+```
+
+The agent loads a skill by calling the tool:
+
+```
+skill({ name: "git-release" })
+```
+
+---
+
+## Configure permissions
+
+Control which skills agents can access using pattern-based permissions in `opencode.json`:
+
+```json
+{
+  "permission": {
+    "skill": {
+      "*": "allow",
+      "pr-review": "allow",
+      "internal-*": "deny",
+      "experimental-*": "ask"
+    }
+  }
+}
+```
+
+| Permission | Behavior                                  |
+| ---------- | ----------------------------------------- |
+| `allow`    | Skill loads immediately                   |
+| `deny`     | Skill hidden from agent, access rejected  |
+| `ask`      | User prompted for approval before loading |
+
+Patterns support wildcards: `internal-*` matches `internal-docs`, `internal-tools`, etc.
+
+---
+
+## Override per agent
+
+Give specific agents different permissions than the global defaults.
+
+**For custom agents** (in agent frontmatter):
+
+```yaml
+---
+permission:
+  skill:
+    "documents-*": "allow"
+---
+```
+
+**For built-in agents** (in `opencode.json`):
+
+```json
+{
+  "agent": {
+    "plan": {
+      "permission": {
+        "skill": {
+          "internal-*": "allow"
+        }
+      }
+    }
+  }
+}
+```
+
+---
+
+## Disable the skill tool
+
+Completely disable skills for agents that shouldn't use them:
+
+**For custom agents**:
+
+```yaml
+---
+tools:
+  skill: false
+---
+```
+
+**For built-in agents**:
+
+```json
+{
+  "agent": {
+    "plan": {
+      "tools": {
+        "skill": false
+      }
+    }
+  }
+}
+```
+
+When disabled, the `<available_skills>` section is omitted entirely.
+
+---
+
+## Advanced configuration
+
+### Additional skill paths
+
+Add custom directories to scan for skills:
+
+```json title="opencode.json"
+{
+  "skills": {
+    "paths": [
+      "~/shared-skills",
+      "./team-skills",
+      "/absolute/path/to/skills"
+    ]
+  }
+}
+```
+
+Paths can be:
+- Absolute: `/path/to/skills`
+- Relative to project: `./team-skills`
+- Home relative: `~/shared-skills`
+
+### Remote skill repositories
+
+Load skills from remote URLs:
+
+```json title="opencode.json"
+{
+  "skills": {
+    "urls": [
+      "https://example.com/skills"
+    ]
+  }
+}
+```
+
+The remote URL must serve an `index.json` file:
+
+```json title="https://example.com/skills/index.json"
+{
+  "skills": [
+    {
+      "name": "git-release",
+      "description": "Create consistent releases",
+      "files": ["SKILL.md", "template.md"]
+    },
+    {
+      "name": "code-review",
+      "description": "Review code for issues",
+      "files": ["SKILL.md", "checklist.md"]
+    }
+  ]
+}
+```
+
+Skills are downloaded to `~/.cache/opencode/skills/` and loaded automatically.
+
+### Disable external skills
+
+Disable Claude Code/Agent compatible skill directories:
+
+```bash
+export OPENCODE_DISABLE_EXTERNAL_SKILLS=1
+```
+
+This disables scanning of `.claude/skills/` and `.agents/skills/` directories.
+
+---
+
+## Skill content structure
+
+The content of your `SKILL.md` (after the frontmatter) contains instructions for the agent.
+
+### Best practices
+
+**Be specific about what the skill does:**
+
+```markdown
+## What I do
+
+- Analyze git history between tags
+- Extract merged PRs and group by type (features, fixes, breaking)
+- Generate semantic version bump recommendation
+- Format output as markdown changelog
+- Provide `gh release create` command
+```
+
+**Explain when to use the skill:**
+
+```markdown
+## When to use me
+
+Use this skill when:
+- You're ready to create a new release
+- You need to generate changelog entries
+- You want version bump recommendations
+
+Don't use this skill for:
+- Pre-release testing
+- Backporting fixes
+```
+
+**Provide context and constraints:**
+
+```markdown
+## Assumptions
+
+- Project follows semantic versioning
+- PRs are labeled with `feature`, `fix`, `breaking-change`
+- Release branch is `main`
+- GitHub CLI (`gh`) is available
+```
+
+**Include examples:**
+
+```markdown
+## Example output
+
+```markdown
+# Release v1.2.0
+
+## Features
+- Add support for remote skills (#123)
+- Improve skill discovery performance (#124)
+
+## Fixes
+- Fix skill name validation (#125)
+
+## Breaking Changes
+- Remove deprecated skill API (#126)
+```
+
+Create release:
+```bash
+gh release create v1.2.0 --title "Release v1.2.0" --notes-file CHANGELOG.md
+```
+```
+
+**Structure complex skills:**
+
+```markdown
+## Process
+
+### Step 1: Analyze commits
+- Run `git log` to get commits since last tag
+- Parse commit messages for conventional commit format
+- Extract issue/PR references
+
+### Step 2: Categorize changes
+- Group by type: features, fixes, breaking changes
+- Sort by significance
+- Filter out internal/chore commits
+
+### Step 3: Generate output
+- Format as markdown with proper headers
+- Include PR links
+- Add version bump recommendation
+- Generate release command
+```
+
+---
+
+## Examples
+
+### Code review skill
+
+```markdown title=".opencode/skills/code-review/SKILL.md"
+---
+name: code-review
+description: Comprehensive code review with security and performance checks
+license: MIT
+---
+
+## What I do
+
+- Review code changes for bugs, security issues, and performance problems
+- Check code style and best practices
+- Identify potential edge cases
+- Suggest specific improvements with code examples
+
+## Review checklist
+
+### Security
+- SQL injection vulnerabilities
+- XSS vulnerabilities
+- Authentication/authorization issues
+- Sensitive data exposure
+- Input validation
+
+### Performance
+- Inefficient algorithms (O(n²) or worse)
+- Unnecessary database queries
+- Missing indexes
+- Memory leaks
+- Blocking operations
+
+### Code Quality
+- Error handling
+- Edge cases
+- Code duplication
+- Naming clarity
+- Test coverage
+
+## Output format
+
+For each issue found, provide:
+1. Severity (Critical/High/Medium/Low)
+2. Location (file:line)
+3. Description of the issue
+4. Specific code fix
+5. Explanation of why the fix works
+```
+
+### Test generator skill
+
+```markdown title=".opencode/skills/test-generator/SKILL.md"
+---
+name: test-generator
+description: Generate comprehensive unit tests with edge cases
+---
+
+## What I do
+
+- Analyze function/class implementation
+- Generate unit tests covering all code paths
+- Include edge cases and error scenarios
+- Follow project's testing patterns
+- Aim for >90% code coverage
+
+## Test generation strategy
+
+### 1. Analyze the code
+- Identify all public functions/methods
+- Map input parameters and their types
+- Identify return values and side effects
+- Note error conditions and exceptions
+
+### 2. Generate test cases
+- Happy path tests
+- Edge cases (empty input, null, undefined, etc.)
+- Boundary conditions
+- Error scenarios
+- Async/Promise handling if applicable
+
+### 3. Follow conventions
+- Use existing test framework (Jest, Vitest, etc.)
+- Match naming patterns from existing tests
+- Use same mocking/stubbing approach
+- Follow describe/it structure
+
+## Example output structure
+
+```typescript
+describe('FunctionName', () => {
+  describe('happy path', () => {
+    it('should handle valid input', () => { })
+  })
+  
+  describe('edge cases', () => {
+    it('should handle empty input', () => { })
+    it('should handle null input', () => { })
+  })
+  
+  describe('error scenarios', () => {
+    it('should throw on invalid input', () => { })
+  })
+})
+```
+```
+
+### API documentation skill
+
+```markdown title=".opencode/skills/api-docs/SKILL.md"
+---
+name: api-docs
+description: Generate OpenAPI/Swagger documentation from code
+metadata:
+  framework: express
+  format: openapi-3.0
+---
+
+## What I do
+
+- Extract API routes from Express/Fastify/etc. code
+- Generate OpenAPI 3.0 specification
+- Document request/response schemas
+- Include authentication requirements
+- Add code examples
+
+## Documentation structure
+
+For each endpoint, document:
+
+### Basic info
+- HTTP method and path
+- Summary and description
+- Tags for grouping
+
+### Request
+- Path parameters
+- Query parameters
+- Request body schema
+- Headers (especially auth)
+
+### Response
+- Success status codes and schemas
+- Error status codes and schemas
+- Response headers
+
+### Security
+- Authentication method
+- Required scopes/permissions
+
+### Examples
+- Request example (curl)
+- Response example (JSON)
+
+## Output format
+
+Generate valid OpenAPI 3.0 YAML that can be imported into:
+- Swagger UI
+- Postman
+- API documentation generators
+```
+
+### Database migration skill
+
+```markdown title=".opencode/skills/db-migration/SKILL.md"
+---
+name: db-migration
+description: Generate database migration scripts with rollback support
+metadata:
+  orm: drizzle
+  database: postgresql
+---
+
+## What I do
+
+- Generate migration scripts for schema changes
+- Include both up and down migrations
+- Handle data transformations safely
+- Add validation and safety checks
+- Follow project's migration conventions
+
+## Migration strategy
+
+### For schema changes
+1. Analyze existing schema
+2. Determine required changes
+3. Generate migration with:
+   - DDL statements (CREATE, ALTER, DROP)
+   - Proper column types and constraints
+   - Index creation/updates
+   - Foreign key handling
+
+### For data migrations
+1. Add safety checks (row counts, validation)
+2. Use transactions
+3. Include rollback logic
+4. Add logging for tracking
+
+## Safety rules
+
+- Never DROP columns/tables without explicit confirmation
+- Always include rollback migration
+- Use transactions where possible
+- Add validation checks before/after
+- Log all operations
+- Test migrations on copy of production data
+
+## Example output
+
+```typescript
+import { sql } from 'drizzle-orm'
+
+export async function up(db) {
+  // Add new column
+  await db.execute(sql`
+    ALTER TABLE users 
+    ADD COLUMN email_verified BOOLEAN DEFAULT FALSE
+  `)
+  
+  // Migrate existing data
+  await db.execute(sql`
+    UPDATE users 
+    SET email_verified = TRUE 
+    WHERE email IS NOT NULL
+  `)
+}
+
+export async function down(db) {
+  // Rollback
+  await db.execute(sql`
+    ALTER TABLE users 
+    DROP COLUMN email_verified
+  `)
+}
+```
+```
+
+---
+
+## Skills vs Commands vs Tools
+
+Understanding when to use each:
+
+### Skills
+
+**Use for**: Complex, reusable workflows with detailed instructions
+
+**Characteristics**:
+- Loaded on-demand by the agent
+- Can contain extensive documentation
+- Multiple pages of instructions
+- Can include bundled resources
+- Shareable across projects
+
+**Example**: Code review methodology with checklists
+
+### Commands
+
+**Use for**: Quick, templated prompts with argument substitution
+
+**Characteristics**:
+- Invoked with `/command-name`
+- Simple template with placeholders
+- Can execute shell commands
+- Can reference files
+- Lightweight and fast
+
+**Example**: `/test` to run test suite
+
+### Tools
+
+**Use for**: Executable functions the LLM can call
+
+**Characteristics**:
+- Execute code when called
+- Return results to the LLM
+- Can perform actions
+- Strongly typed arguments
+- Can be written in any language
+
+**Example**: Database query tool, API client
+
+### Decision matrix
+
+| Need | Use |
+|------|-----|
+| Multi-step process with detailed guidance | **Skill** |
+| Quick prompt with argument substitution | **Command** |
+| Execute code and return results | **Tool** |
+| Share complex workflow across projects | **Skill** |
+| Simple one-liner with file/shell refs | **Command** |
+| Interact with external systems | **Tool** |
+| Extensive documentation and examples | **Skill** |
+
+---
+
+## Troubleshoot loading
+
+If a skill does not show up:
+
+1. **Verify `SKILL.md` is spelled in all caps**
+   ```bash
+   # Correct
+   .opencode/skills/my-skill/SKILL.md
+   
+   # Wrong
+   .opencode/skills/my-skill/skill.md
+   .opencode/skills/my-skill/Skill.md
+   ```
+
+2. **Check that frontmatter includes `name` and `description`**
+   ```yaml
+   ---
+   name: my-skill        # Required
+   description: ...      # Required
+   ---
+   ```
+
+3. **Ensure skill names are unique across all locations**
+   - Check for duplicate names in global and project skills
+   - Later sources override earlier ones
+
+4. **Check permissions—skills with `deny` are hidden from agents**
+   ```json
+   {
+     "permission": {
+       "skill": {
+         "my-skill": "allow"  // Make sure not "deny"
+       }
+     }
+   }
+   ```
+
+5. **Verify directory name matches skill name**
+   ```bash
+   # Correct
+   .opencode/skills/my-skill/SKILL.md  # name: my-skill
+   
+   # Wrong
+   .opencode/skills/MySkill/SKILL.md   # name: my-skill
+   ```
+
+6. **Check skill name format**
+   ```yaml
+   # Valid
+   name: my-skill
+   name: code-review
+   name: api-docs
+   
+   # Invalid
+   name: My-Skill      # No uppercase
+   name: my_skill      # No underscores
+   name: -my-skill     # Can't start with hyphen
+   name: my--skill     # No consecutive hyphens
+   ```

@@ -1,0 +1,433 @@
+---
+title: "upgrade"
+description: "Update OpenCode to latest or specific version"
+---
+
+## Overview
+
+The `upgrade` command updates OpenCode to the latest version or a specific target version. It automatically detects your installation method and uses the appropriate upgrade mechanism.
+
+## Usage
+
+```bash
+opencode upgrade [target]
+```
+
+### Upgrade to Latest
+
+```bash
+opencode upgrade
+```
+
+### Upgrade to Specific Version
+
+```bash
+opencode upgrade v0.1.48
+# or
+opencode upgrade 0.1.48
+```
+
+## Options
+
+<ParamField path="target" type="string">
+  Version to upgrade to (e.g., `0.1.48` or `v0.1.48`). If omitted, upgrades to the latest version.
+</ParamField>
+
+<ParamField path="--method" type="string">
+  Installation method to use. Short form: `-m`
+  
+  Supported methods:
+  - `curl` - Shell script installation
+  - `npm` - Node Package Manager
+  - `pnpm` - PNPM package manager
+  - `bun` - Bun package manager
+  - `brew` - Homebrew (macOS/Linux)
+  - `choco` - Chocolatey (Windows)
+  - `scoop` - Scoop (Windows)
+</ParamField>
+
+## Installation Methods
+
+### Automatic Detection
+
+OpenCode automatically detects how it was installed:
+
+```bash
+opencode upgrade
+```
+
+Output:
+```
+Using method: npm
+From 0.1.47 → 0.1.48
+Upgrading...
+✓ Upgrade complete
+```
+
+### Manual Method
+
+Override automatic detection:
+
+```bash
+opencode upgrade --method brew
+```
+
+## Examples
+
+### Update to Latest
+
+```bash
+$ opencode upgrade
+
+  ___                   ___          _
+ / _ \ _ __   ___ _ __ / ___|___   __| | ___
+| | | | '_ \ / _ \ '_ \\ |   / _ \ / _` |/ _ \
+| |_| | |_) |  __/ | | | |_| (_) | (_| |  __/
+ \___/| .__/ \___|_| |_|\____\___/ \__,_|\___|
+      |_|
+
+◇ Upgrade
+
+◇ Using method: npm
+◇ From 0.1.47 → 0.1.48
+◇ Upgrading...
+✓ Upgrade complete
+
+✓ Done
+```
+
+### Specific Version
+
+```bash
+opencode upgrade v0.1.45
+```
+
+### Force npm Method
+
+```bash
+opencode upgrade --method npm
+```
+
+### Downgrade
+
+You can also downgrade to an earlier version:
+
+```bash
+opencode upgrade v0.1.40
+```
+
+## Installation Method Details
+
+### curl (Shell Script)
+
+For installations via the shell script:
+
+```bash
+curl -fsSL https://opencode.ai/install.sh | sh
+```
+
+Upgrade:
+
+```bash
+opencode upgrade --method curl
+```
+
+This re-downloads and installs the latest version.
+
+### npm/pnpm/bun
+
+For Node.js package managers:
+
+```bash
+npm install -g opencode
+pnpm install -g opencode
+bun install -g opencode
+```
+
+Upgrade:
+
+```bash
+opencode upgrade --method npm
+# or
+opencode upgrade --method pnpm
+# or
+opencode upgrade --method bun
+```
+
+This runs the equivalent of `npm update -g opencode`.
+
+### brew (Homebrew)
+
+For macOS and Linux Homebrew installations:
+
+```bash
+brew install opencode
+```
+
+Upgrade:
+
+```bash
+opencode upgrade --method brew
+```
+
+Runs `brew upgrade opencode`.
+
+### choco (Chocolatey)
+
+For Windows Chocolatey:
+
+```bash
+choco install opencode
+```
+
+Upgrade:
+
+```bash
+opencode upgrade --method choco
+```
+
+<Warning>
+  Chocolatey requires an elevated (Administrator) command prompt for upgrades.
+</Warning>
+
+### scoop (Scoop)
+
+For Windows Scoop:
+
+```bash
+scoop install opencode
+```
+
+Upgrade:
+
+```bash
+opencode upgrade --method scoop
+```
+
+## Version Detection
+
+### Check Current Version
+
+```bash
+opencode --version
+```
+
+Or:
+
+```bash
+opencode -v
+```
+
+### Already Up to Date
+
+If you're already on the target version:
+
+```
+◇ opencode upgrade skipped: 0.1.48 is already installed
+✓ Done
+```
+
+## Troubleshooting
+
+### Unknown Installation Method
+
+**Problem**: `opencode is installed to /path/to/opencode and may be managed by a package manager`
+
+**Solutions**:
+- Specify the method explicitly: `opencode upgrade --method npm`
+- Uninstall and reinstall using a supported method
+- Use your package manager directly
+
+**Prompt to install anyway**:
+
+The command will ask if you want to proceed:
+
+```
+◆ Install anyways?
+│ ● Yes
+│   No
+└
+```
+
+Select "Yes" to install using the default method (curl).
+
+### Permission Denied
+
+**Problem**: Permission errors during upgrade
+
+**Solutions**:
+
+**macOS/Linux**:
+```bash
+sudo opencode upgrade
+```
+
+**Windows (Chocolatey)**:
+Run Command Prompt or PowerShell as Administrator:
+```bash
+opencode upgrade --method choco
+```
+
+### Network Errors
+
+**Problem**: Cannot download new version
+
+**Solutions**:
+- Check internet connectivity
+- Verify firewall allows downloads
+- Try again later (registry may be temporarily unavailable)
+- Check proxy settings if behind corporate firewall
+
+### Upgrade Failed
+
+**Problem**: Generic upgrade failure
+
+**Solutions**:
+- Check stderr output for specific error
+- Try a different installation method
+- Manually uninstall and reinstall
+- Report the issue on GitHub
+
+### Cannot Find Version
+
+**Problem**: Specified version doesn't exist
+
+**Solutions**:
+- Check available versions on [GitHub Releases](https://github.com/anomalyco/opencode/releases)
+- Verify version format (use `v0.1.48` or `0.1.48`)
+- Omit version to get latest: `opencode upgrade`
+
+## Automatic Updates
+
+By default, OpenCode checks for updates and notifies you:
+
+```
+! A new version (0.1.48) is available. Run `opencode upgrade` to update.
+```
+
+### Disable Auto-Update Checks
+
+Set environment variable:
+
+```bash
+export OPENCODE_DISABLE_AUTOUPDATE=true
+```
+
+Or in `opencode.json`:
+
+```json
+{
+  "disableAutoUpdate": true
+}
+```
+
+## Upgrade Strategies
+
+### Stable Releases
+
+For production use:
+
+```bash
+# Stay on latest stable
+opencode upgrade
+```
+
+### Specific Versions
+
+For consistency across team:
+
+```bash
+# Pin to specific version
+opencode upgrade v0.1.48
+```
+
+Document the version in your project:
+
+```json
+// package.json or similar
+{
+  "opencode": "^0.1.48"
+}
+```
+
+### Testing New Releases
+
+Test pre-release versions:
+
+```bash
+# Try beta/rc versions
+opencode upgrade v0.2.0-beta.1
+```
+
+<Warning>
+  Pre-release versions may have bugs. Don't use in production.
+</Warning>
+
+## Post-Upgrade
+
+After upgrading:
+
+1. **Verify version**:
+   ```bash
+   opencode --version
+   ```
+
+2. **Check release notes**:
+   Visit [GitHub Releases](https://github.com/anomalyco/opencode/releases) for changelog
+
+3. **Test functionality**:
+   ```bash
+   opencode --help
+   ```
+
+4. **Review breaking changes**:
+   Major version upgrades may have breaking changes
+
+## Manual Installation
+
+If automatic upgrade fails, manually install:
+
+### Shell Script
+
+```bash
+curl -fsSL https://opencode.ai/install.sh | sh
+```
+
+### npm
+
+```bash
+npm install -g opencode@latest
+```
+
+### Homebrew
+
+```bash
+brew upgrade opencode
+```
+
+### From Source
+
+```bash
+git clone https://github.com/anomalyco/opencode.git
+cd opencode
+bun install
+bun run build
+bun link
+```
+
+## Related Topics
+
+<CardGroup cols={2}>
+  <Card title="Installation" icon="download" href="/installation">
+    Initial installation guide
+  </Card>
+  <Card title="Release Notes" icon="newspaper" href="https://github.com/anomalyco/opencode/releases">
+    View version changelogs
+  </Card>
+  <Card title="uninstall" icon="trash" href="/cli/commands/uninstall">
+    Remove OpenCode completely
+  </Card>
+  <Card title="Troubleshooting" icon="wrench" href="/troubleshooting">
+    Resolve common issues
+  </Card>
+</CardGroup>

@@ -1,0 +1,179 @@
+---
+title: "serve"
+description: "Start a headless OpenCode server for API access"
+---
+
+## Overview
+
+The `serve` command starts a headless HTTP server that provides API access to OpenCode functionality without the TUI interface. This is ideal for:
+
+- Programmatic API access
+- Running on remote servers
+- Integrating with other tools
+- Avoiding MCP server cold boot times
+
+## Usage
+
+```bash
+opencode serve
+```
+
+The server starts on `127.0.0.1:0` (random port) by default. Use flags to customize the network settings.
+
+## Options
+
+<ParamField path="--port" type="number" default="0">
+  Port to listen on. Default is `0` (random available port).
+</ParamField>
+
+<ParamField path="--hostname" type="string" default="127.0.0.1">
+  Hostname to listen on. Use `0.0.0.0` to allow external connections.
+</ParamField>
+
+<ParamField path="--mdns" type="boolean" default="false">
+  Enable mDNS service discovery. When enabled, defaults hostname to `0.0.0.0`.
+</ParamField>
+
+<ParamField path="--mdns-domain" type="string" default="opencode.local">
+  Custom domain name for mDNS service.
+</ParamField>
+
+<ParamField path="--cors" type="string[]" default="[]">
+  Additional browser origins to allow for CORS. Can be specified multiple times.
+</ParamField>
+
+## Examples
+
+### Basic Server
+
+Start a local server on a random port:
+
+```bash
+opencode serve
+```
+
+### Fixed Port
+
+Start server on port 4096:
+
+```bash
+opencode serve --port 4096
+```
+
+### Network-Accessible Server
+
+Allow connections from other machines:
+
+```bash
+opencode serve --port 4096 --hostname 0.0.0.0
+```
+
+### With mDNS Discovery
+
+Enable service discovery on local network:
+
+```bash
+opencode serve --mdns
+```
+
+### Custom CORS Origins
+
+Allow specific origins for web access:
+
+```bash
+opencode serve --cors https://example.com --cors https://app.example.com
+```
+
+## Authentication
+
+<Warning>
+  By default, the server runs without authentication. Always set `OPENCODE_SERVER_PASSWORD` in production environments.
+</Warning>
+
+Enable HTTP basic authentication by setting environment variables:
+
+```bash
+export OPENCODE_SERVER_PASSWORD="your-secure-password"
+opencode serve
+```
+
+Optionally customize the username (defaults to `opencode`):
+
+```bash
+export OPENCODE_SERVER_USERNAME="admin"
+export OPENCODE_SERVER_PASSWORD="your-secure-password"
+opencode serve
+```
+
+## Using with Run Command
+
+You can attach to a running `serve` instance to avoid MCP server cold boot times:
+
+```bash
+# Terminal 1: Start the server
+opencode serve --port 4096
+
+# Terminal 2: Run commands that attach to it
+opencode run --attach http://localhost:4096 "Explain async/await"
+opencode run --attach http://localhost:4096 "Fix the bug in app.ts"
+```
+
+## API Access
+
+The server exposes a full HTTP API. See the [Server API documentation](/server) for details on available endpoints.
+
+Basic example using the JavaScript SDK:
+
+```javascript
+import { createOpencodeClient } from '@opencode-ai/sdk/v2'
+
+const client = createOpencodeClient({
+  baseUrl: 'http://localhost:4096',
+  auth: {
+    username: 'opencode',
+    password: process.env.OPENCODE_SERVER_PASSWORD
+  }
+})
+
+// Create a session and send a message
+const session = await client.session.create({})
+await client.session.prompt({
+  sessionID: session.data.id,
+  parts: [{ type: 'text', text: 'Hello!' }]
+})
+```
+
+## Configuration
+
+You can set default server options in your global configuration file (`~/.config/opencode/config.json`):
+
+```json
+{
+  "server": {
+    "port": 4096,
+    "hostname": "127.0.0.1",
+    "mdns": false,
+    "mdnsDomain": "opencode.local",
+    "cors": ["https://example.com"]
+  }
+}
+```
+
+Command-line flags always override configuration file settings.
+
+## Related Commands
+
+<CardGroup cols={2}>
+  <Card title="web" icon="globe" href="/cli/web">
+    Start server with web interface
+  </Card>
+  <Card title="attach" icon="link" href="/cli/attach">
+    Attach TUI to running server
+  </Card>
+  <Card title="run" icon="play" href="/cli/commands/init">
+    Run commands non-interactively
+  </Card>
+  <Card title="Server API" icon="code" href="/server">
+    View full HTTP API documentation
+  </Card>
+</CardGroup>

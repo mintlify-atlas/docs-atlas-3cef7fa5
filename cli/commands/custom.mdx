@@ -1,0 +1,466 @@
+---
+title: "Custom Commands"
+description: "Create custom workflow commands for your team"
+---
+
+## Overview
+
+Custom commands let you define reusable workflows that encapsulate your team's best practices, coding standards, and common tasks. They transform complex multi-step processes into simple commands.
+
+## Creating Commands
+
+Define commands in `opencode.json`:
+
+```json
+{
+  "command": {
+    "review": {
+      "description": "Review code changes",
+      "template": "Review all uncommitted changes for potential issues, suggest improvements, and check against our coding standards."
+    },
+    "test": {
+      "description": "Generate tests for $1",
+      "template": "Create comprehensive unit tests for $1. Use the testing framework configured in the project. Cover edge cases and error handling."
+    }
+  }
+}
+```
+
+Then use them:
+
+```
+/review
+/test src/auth.ts
+```
+
+## Command Structure
+
+### Basic Command
+
+Minimal command definition:
+
+```json
+{
+  "command": {
+    "docs": {
+      "description": "Generate documentation",
+      "template": "Create comprehensive documentation for the current file."
+    }
+  }
+}
+```
+
+### With Arguments
+
+Commands can accept arguments:
+
+```json
+{
+  "command": {
+    "refactor": {
+      "description": "Refactor $1 using $2 pattern",
+      "template": "Refactor $1 to use the $2 design pattern. Maintain all existing functionality and add tests."
+    }
+  }
+}
+```
+
+Usage:
+```
+/refactor src/users/service.ts singleton
+```
+
+### With Specific Agent
+
+Assign commands to specialized agents:
+
+```json
+{
+  "command": {
+    "security-audit": {
+      "description": "Audit code for security issues",
+      "template": "Review the code for security vulnerabilities including SQL injection, XSS, authentication bypasses, and insecure dependencies.",
+      "agent": "security-expert"
+    }
+  }
+}
+```
+
+### With Specific Model
+
+Use a specific model for a command:
+
+```json
+{
+  "command": {
+    "explain": {
+      "description": "Explain $1 in simple terms",
+      "template": "Explain $1 in simple, beginner-friendly terms. Use analogies and examples.",
+      "model": "anthropic/claude-4.5-sonnet"
+    }
+  }
+}
+```
+
+### As Subtask
+
+Execute command as a subtask (uses Task tool):
+
+```json
+{
+  "command": {
+    "optimize": {
+      "description": "Optimize performance of $1",
+      "template": "Analyze $1 for performance bottlenecks. Profile the code, identify slow operations, and implement optimizations.",
+      "subtask": true
+    }
+  }
+}
+```
+
+Subtasks:
+- Run in isolated context
+- Can use specialized agents
+- Results are summarized back to main agent
+- Useful for complex, independent tasks
+
+## Template Syntax
+
+### Positional Arguments
+
+Use `$1`, `$2`, `$3`, etc. for individual arguments:
+
+```json
+{
+  "template": "Update $1 to use $2 instead of $3"
+}
+```
+
+Usage:
+```
+/command file.ts async/await callbacks
+```
+
+Expands to:
+```
+Update file.ts to use async/await instead of callbacks
+```
+
+### All Arguments
+
+Use `$ARGUMENTS` for all arguments as a single string:
+
+```json
+{
+  "template": "Research and explain: $ARGUMENTS"
+}
+```
+
+Usage:
+```
+/command how do React hooks work internally?
+```
+
+Expands to:
+```
+Research and explain: how do React hooks work internally?
+```
+
+### Escaping
+
+To use literal `$` in templates:
+
+```json
+{
+  "template": "Set environment variable \$API_KEY to $1"
+}
+```
+
+### Multi-line Templates
+
+Use arrays for multi-line templates:
+
+```json
+{
+  "command": {
+    "feature": {
+      "description": "Implement new feature $1",
+      "template": [
+        "Implement the feature: $1",
+        "",
+        "Follow these steps:",
+        "1. Create necessary files and structure",
+        "2. Implement core functionality",
+        "3. Add error handling",
+        "4. Write tests",
+        "5. Update documentation"
+      ]
+    }
+  }
+}
+```
+
+Arrays are joined with newlines.
+
+## Real-World Examples
+
+### Development Workflow
+
+```json
+{
+  "command": {
+    "pr": {
+      "description": "Create pull request",
+      "template": "Create a pull request for the current branch. Write a clear title and description summarizing changes. Use conventional commit format. Run tests before creating PR."
+    },
+    "commit": {
+      "description": "Create conventional commit",
+      "template": "Review staged changes and create a conventional commit message. Format: type(scope): description. Types: feat, fix, docs, refactor, test, chore."
+    },
+    "changelog": {
+      "description": "Update CHANGELOG.md",
+      "template": "Update CHANGELOG.md with recent changes. Group by Added, Changed, Fixed, Removed. Follow Keep a Changelog format."
+    }
+  }
+}
+```
+
+### Testing Commands
+
+```json
+{
+  "command": {
+    "test-file": {
+      "description": "Generate tests for $1",
+      "template": "Create comprehensive unit tests for $1. Use Jest/Vitest. Cover: happy path, edge cases, error conditions, boundary values. Aim for >90% coverage.",
+      "agent": "test-expert"
+    },
+    "e2e": {
+      "description": "Create E2E test for $1",
+      "template": "Create end-to-end test for $1 using Playwright/Cypress. Test the complete user flow including: navigation, interactions, assertions, error states."
+    },
+    "fix-tests": {
+      "description": "Fix failing tests",
+      "template": "Run the test suite. For each failing test, analyze the failure, determine root cause, and fix the issue. Ensure fix doesn't break other tests."
+    }
+  }
+}
+```
+
+### Code Quality
+
+```json
+{
+  "command": {
+    "lint": {
+      "description": "Fix linting issues",
+      "template": "Run linter and fix all auto-fixable issues. For issues requiring manual fixes, make appropriate changes following project conventions."
+    },
+    "types": {
+      "description": "Fix TypeScript errors in $1",
+      "template": "Fix all TypeScript errors in $1. Add proper types, fix inference issues, resolve imports. Avoid using 'any' unless absolutely necessary."
+    },
+    "cleanup": {
+      "description": "Clean up code in $1",
+      "template": "Clean up $1: remove unused code, fix formatting, improve naming, add comments, extract magic numbers, simplify complex logic."
+    }
+  }
+}
+```
+
+### Documentation
+
+```json
+{
+  "command": {
+    "readme": {
+      "description": "Update README",
+      "template": "Update README.md with current project info. Include: overview, installation, usage, examples, API reference, contributing guidelines. Use clear headings and formatting.",
+      "agent": "technical-writer"
+    },
+    "api-docs": {
+      "description": "Document API in $1",
+      "template": "Generate API documentation for $1. Document all public functions/classes with JSDoc/TSDoc: description, parameters, return types, examples, edge cases."
+    },
+    "inline": {
+      "description": "Add inline docs to $1",
+      "template": "Add inline documentation to $1. Comment complex logic, explain non-obvious code, document assumptions. Keep comments concise and valuable."
+    }
+  }
+}
+```
+
+### Refactoring
+
+```json
+{
+  "command": {
+    "extract": {
+      "description": "Extract $1 from $2",
+      "template": "Extract $1 from $2 into a separate, reusable module. Create proper exports, maintain same interface, update all imports, add tests."
+    },
+    "modernize": {
+      "description": "Modernize $1",
+      "template": "Modernize $1 to use current best practices: async/await, arrow functions, destructuring, optional chaining, nullish coalescing. Maintain functionality."
+    },
+    "dry": {
+      "description": "Apply DRY principle to $1",
+      "template": "Refactor $1 to eliminate code duplication. Extract common logic into reusable functions, use composition, maintain readability."
+    }
+  }
+}
+```
+
+### Database
+
+```json
+{
+  "command": {
+    "migration": {
+      "description": "Create migration for $1",
+      "template": "Create a database migration for $1. Include: schema changes, indexes, foreign keys, data transformations. Add both up and down migrations."
+    },
+    "seed": {
+      "description": "Create seed data for $1",
+      "template": "Create realistic seed data for $1. Include various scenarios, edge cases, relationships. Use faker for generated data."
+    },
+    "query": {
+      "description": "Optimize query in $1",
+      "template": "Analyze and optimize the database query in $1. Add indexes, rewrite for efficiency, use proper joins, explain the improvements.",
+      "subtask": true
+    }
+  }
+}
+```
+
+## Command Discovery
+
+Users can discover commands through:
+
+### Autocomplete
+
+Type `/` to see all available commands:
+
+```
+/
+  init - Create/update AGENTS.md
+  review - Review code changes
+  test - Generate tests for $1
+  docs - Generate documentation
+  ...
+```
+
+### Command Help
+
+Commands show their descriptions in autocomplete with argument hints:
+
+```
+/refactor $1 $2 - Refactor $1 using $2 pattern
+/test $1 - Generate tests for $1
+```
+
+### List Commands Programmatically
+
+Via API:
+
+```bash
+curl http://localhost:4096/api/command
+```
+
+## Sharing Commands
+
+### Team Commands
+
+Commit `opencode.json` to share commands with your team:
+
+```bash
+git add opencode.json
+git commit -m "Add custom workflow commands"
+git push
+```
+
+Team members get the commands automatically.
+
+### Global Commands
+
+Add personal commands globally:
+
+```json
+// ~/.config/opencode/opencode.json
+{
+  "command": {
+    "note": {
+      "description": "Add note to $1",
+      "template": "Add a detailed comment note to $1 explaining: $ARGUMENTS"
+    }
+  }
+}
+```
+
+Global commands work in all projects.
+
+### Priority
+
+When the same command name exists in multiple places:
+
+1. **Project** - `.opencode/opencode.json` (highest priority)
+2. **Project root** - `opencode.json`
+3. **Global** - `~/.config/opencode/opencode.json`
+4. **Built-in** - `/init`, `/review` (lowest priority)
+
+## Command Libraries
+
+Create reusable command libraries:
+
+```json
+// commands/testing.json
+{
+  "command": {
+    "test-file": { ... },
+    "test-suite": { ... },
+    "coverage": { ... }
+  }
+}
+```
+
+Import in your `opencode.json`:
+
+```json
+{
+  "extends": ["./commands/testing.json", "./commands/docs.json"]
+}
+```
+
+## Best Practices
+
+<CardGroup>
+  <Card title="Be specific" icon="bullseye">
+    Write detailed templates that clearly describe expectations
+  </Card>
+  <Card title="Use agents" icon="user-gear">
+    Assign specialized agents to appropriate commands
+  </Card>
+  <Card title="Add examples" icon="book">
+    Include examples in templates to guide the agent
+  </Card>
+  <Card title="Keep descriptions short" icon="compress">
+    Use concise descriptions that explain when to use the command
+  </Card>
+</CardGroup>
+
+## Related Topics
+
+<CardGroup cols={2}>
+  <Card title="Commands Config" icon="gear" href="/commands">
+    Full command configuration reference
+  </Card>
+  <Card title="Agents" icon="robot" href="/agents">
+    Create specialized agents
+  </Card>
+  <Card title="In-Session Commands" icon="terminal" href="/cli/commands/init">
+    Learn about built-in commands
+  </Card>
+  <Card title="MCP Prompts" icon="server" href="/mcp-servers">
+    Add commands from MCP servers
+  </Card>
+</CardGroup>

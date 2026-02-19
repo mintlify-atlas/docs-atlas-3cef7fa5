@@ -1,0 +1,627 @@
+---
+title: 'Network Configuration'
+description: 'Configure proxies, custom certificates, mDNS discovery, and enterprise network settings'
+icon: 'network-wired'
+---
+
+OpenCode supports enterprise network environments with proxy servers, custom CA certificates, and local network discovery via mDNS (Bonjour).
+
+## Proxy Configuration
+
+OpenCode respects standard HTTP proxy environment variables for all outbound connections to LLM providers, APIs, and external services.
+
+### Basic Setup
+
+<CodeGroup>
+```bash HTTPS Proxy (Recommended)
+export HTTPS_PROXY=https://proxy.example.com:8080
+export NO_PROXY=localhost,127.0.0.1
+opencode
+```
+
+```bash HTTP Proxy
+export HTTP_PROXY=http://proxy.example.com:8080
+export NO_PROXY=localhost,127.0.0.1
+opencode
+```
+</CodeGroup>
+
+<Warning>
+You **must** set `NO_PROXY=localhost,127.0.0.1` to prevent the TUI from routing local server connections through the proxy. This would create a routing loop and break the application.
+</Warning>
+
+### Environment Variables
+
+<ParamField path="HTTPS_PROXY" type="string">
+  HTTPS proxy URL (recommended for encrypted proxy connections).
+</ParamField>
+
+<ParamField path="HTTP_PROXY" type="string">
+  HTTP proxy URL (fallback if HTTPS_PROXY not set).
+</ParamField>
+
+<ParamField path="NO_PROXY" type="string">
+  Comma-separated list of hosts to bypass proxy. Must include `localhost,127.0.0.1` for OpenCode to function.
+</ParamField>
+
+<ParamField path="ALL_PROXY" type="string">
+  Generic proxy for all protocols (least specific, use HTTPS_PROXY/HTTP_PROXY when possible).
+</ParamField>
+
+### Proxy Authentication
+
+Include credentials directly in the proxy URL:
+
+```bash
+export HTTPS_PROXY=http://username:password@proxy.example.com:8080
+export NO_PROXY=localhost,127.0.0.1
+```
+
+<Warning>
+**Security Best Practices:**
+- Never hardcode passwords in scripts committed to version control
+- Use environment variable substitution: `http://${PROXY_USER}:${PROXY_PASS}@proxy.example.com:8080`
+- Consider using an LLM Gateway for advanced auth (NTLM, Kerberos)
+- Rotate credentials regularly
+</Warning>
+
+### Advanced Authentication Methods
+
+For proxies requiring NTLM, Kerberos, or certificate-based auth:
+
+<Steps>
+  <Step title="Deploy an LLM Gateway">
+    Use tools like [LiteLLM Proxy](https://docs.litellm.ai/docs/proxy/deploy) or [Kong](https://konghq.com/) that support advanced authentication.
+    
+    ```bash
+    # LiteLLM example
+    docker run -p 4000:4000 \
+      -e PROXY_HOST=proxy.example.com \
+      -e PROXY_PORT=8080 \
+      ghcr.io/berriai/litellm:latest
+    ```
+  </Step>
+  
+  <Step title="Configure OpenCode to use the gateway">
+    Point OpenCode to your gateway instead of directly to LLM providers:
+    
+    ```json opencode.json
+    {
+      "providers": {
+        "openai": {
+          "baseURL": "http://localhost:4000/openai"
+        }
+      }
+    }
+    ```
+  </Step>
+  
+  <Step title="No proxy needed for OpenCode">
+    OpenCode connects to the gateway on localhost, bypassing the proxy entirely.
+  </Step>
+</Steps>
+
+### Proxy Debugging
+
+Verify proxy connectivity:
+
+<CodeGroup>
+```bash Test HTTPS Proxy
+curl -x $HTTPS_PROXY https://api.openai.com/v1/models \
+  -H "Authorization: Bearer $OPENAI_API_KEY"
+```
+
+```bash Check Environment
+env | grep -i proxy
+# Should show:
+# HTTPS_PROXY=https://proxy.example.com:8080
+# NO_PROXY=localhost,127.0.0.1
+```
+
+```bash Verify NO_PROXY
+curl http://localhost:4096/global/health
+# Should work WITHOUT going through proxy
+```
+</CodeGroup>
+
+<Accordion title="Common Proxy Issues">
+  <AccordionGroup>
+    <Accordion title="TUI won't connect to server">
+      **Cause**: `NO_PROXY` not set, routing localhost through proxy.
+      
+      **Fix**:
+      ```bash
+      export NO_PROXY=localhost,127.0.0.1
+      ```
+    </Accordion>
+    
+    <Accordion title="SSL certificate verification fails">
+      **Cause**: Proxy performs SSL interception with custom CA.
+      
+      **Fix**: Add custom CA certificate (see Custom Certificates section).
+    </Accordion>
+    
+    <Accordion title="Proxy authentication errors">
+      **Cause**: Special characters in password not URL-encoded.
+      
+      **Fix**: URL-encode password:
+      ```bash
+      # Password: p@ssw0rd! → p%40ssw0rd%21
+      export HTTPS_PROXY=http://user:p%40ssw0rd%21@proxy.example.com:8080
+      ```
+    </Accordion>
+  </AccordionGroup>
+</Accordion>
+
+## Custom CA Certificates
+
+Enterprise networks often use custom Certificate Authorities (CAs) for SSL/TLS inspection. Configure OpenCode to trust these certificates.
+
+### Single Certificate File
+
+```bash
+export NODE_EXTRA_CA_CERTS=/path/to/corporate-ca.pem
+opencode
+```
+
+<Note>
+This variable is read by Node.js/Bun's TLS stack and applies to:
+- Proxy connections (if using HTTPS proxy)
+- Direct HTTPS requests to LLM providers
+- Any other HTTPS traffic from OpenCode
+</Note>
+
+### Multiple Certificates
+
+Concatenate multiple CA certificates into one file:
+
+```bash
+cat ca-root.pem ca-intermediate.pem > combined-ca.pem
+export NODE_EXTRA_CA_CERTS=/path/to/combined-ca.pem
+```
+
+### Certificate Locations
+
+Common enterprise CA certificate locations:
+
+<CodeGroup>
+```bash Windows
+C:\ProgramData\Company\Certificates\ca.crt
+# Convert to PEM if needed:
+certutil -encode ca.crt ca.pem
+```
+
+```bash macOS
+# Export from Keychain
+security find-certificate -a -p \
+  -c "Corporate Root CA" \
+  /Library/Keychains/System.keychain > ca.pem
+```
+
+```bash Linux
+# System-wide CA bundle (varies by distro)
+/etc/ssl/certs/ca-certificates.crt  # Debian/Ubuntu
+/etc/pki/tls/certs/ca-bundle.crt    # RHEL/CentOS
+```
+</CodeGroup>
+
+### Persistent Configuration
+
+Add to your shell profile for persistence:
+
+<CodeGroup>
+```bash ~/.bashrc or ~/.zshrc
+export NODE_EXTRA_CA_CERTS="$HOME/.config/opencode/corporate-ca.pem"
+export HTTPS_PROXY="https://proxy.example.com:8080"
+export NO_PROXY="localhost,127.0.0.1"
+```
+
+```bash Windows (System Environment)
+setx NODE_EXTRA_CA_CERTS "C:\Users\YourName\.config\opencode\ca.pem"
+setx HTTPS_PROXY "https://proxy.example.com:8080"
+setx NO_PROXY "localhost,127.0.0.1"
+```
+</CodeGroup>
+
+### Certificate Verification Issues
+
+<Accordion title="Troubleshooting SSL Errors">
+  <AccordionGroup>
+    <Accordion title="CERT_HAS_EXPIRED">
+      **Symptoms**: `certificate has expired` errors.
+      
+      **Diagnosis**:
+      ```bash
+      openssl s_client -connect api.openai.com:443 -proxy proxy.example.com:8080
+      # Check "Verify return code"
+      ```
+      
+      **Fix**: Update your CA certificate file or contact IT.
+    </Accordion>
+    
+    <Accordion title="UNABLE_TO_VERIFY_LEAF_SIGNATURE">
+      **Symptoms**: `unable to verify the first certificate`.
+      
+      **Cause**: Missing intermediate CA certificate.
+      
+      **Fix**: Ensure your CA file includes the full chain:
+      ```bash
+      cat root-ca.pem intermediate-ca.pem > full-chain.pem
+      export NODE_EXTRA_CA_CERTS=/path/to/full-chain.pem
+      ```
+    </Accordion>
+    
+    <Accordion title="SELF_SIGNED_CERT_IN_CHAIN">
+      **Symptoms**: `self signed certificate in certificate chain`.
+      
+      **Fix**: Add the self-signed root CA to `NODE_EXTRA_CA_CERTS`.
+    </Accordion>
+  </AccordionGroup>
+</Accordion>
+
+## mDNS Service Discovery
+
+mDNS (Multicast DNS), also known as Bonjour or Zeroconf, enables automatic discovery of OpenCode servers on the local network without manual IP configuration.
+
+### How mDNS Works
+
+<Steps>
+  <Step title="Server publishes service">
+    When `--mdns` is enabled, the OpenCode server announces itself on the local network:
+    
+    ```
+    Service Name: opencode-4096._http._tcp.local.
+    Hostname: opencode.local (or custom via --mdns-domain)
+    Port: 4096
+    ```
+  </Step>
+  
+  <Step title="Clients discover server">
+    mDNS-aware clients (web browsers, mobile apps) query for `_http._tcp.local.` services and receive server details.
+  </Step>
+  
+  <Step title="Automatic connection">
+    Clients connect to `http://opencode.local:4096` without knowing the IP address.
+  </Step>
+</Steps>
+
+### Enable mDNS
+
+```bash
+opencode serve \
+  --hostname 0.0.0.0 \
+  --port 4096 \
+  --mdns
+```
+
+<Warning>
+mDNS requires:
+- `--hostname` set to a non-loopback address (not `127.0.0.1` or `localhost`)
+- UDP port 5353 accessible on the local network
+- mDNS responder running on the host (avahi-daemon on Linux, built-in on macOS/Windows)
+</Warning>
+
+### Custom Domain Name
+
+```bash
+opencode serve \
+  --hostname 0.0.0.0 \
+  --port 4096 \
+  --mdns \
+  --mdns-domain mycompany-ai.local
+```
+
+Clients can then connect to `http://mycompany-ai.local:4096`.
+
+### mDNS Implementation
+
+OpenCode uses the `bonjour-service` library:
+
+```typescript
+// From packages/opencode/src/server/mdns.ts
+import { Bonjour } from "bonjour-service";
+
+const bonjour = new Bonjour();
+const service = bonjour.publish({
+  name: `opencode-${port}`,
+  type: "http",
+  host: "opencode.local",
+  port: 4096,
+  txt: { path: "/" }
+});
+```
+
+### Discovery from Clients
+
+<CodeGroup>
+```javascript JavaScript (Browser/Node)
+const Bonjour = require('bonjour-service');
+const bonjour = new Bonjour();
+
+bonjour.find({ type: 'http' }, (service) => {
+  if (service.name.startsWith('opencode-')) {
+    console.log(`Found OpenCode at ${service.host}:${service.port}`);
+  }
+});
+```
+
+```python Python
+import socket
+from zeroconf import ServiceBrowser, Zeroconf
+
+class OpenCodeListener:
+    def add_service(self, zeroconf, type, name):
+        info = zeroconf.get_service_info(type, name)
+        print(f"Found OpenCode at {info.server}:{info.port}")
+
+zeroconf = Zeroconf()
+browser = ServiceBrowser(zeroconf, "_http._tcp.local.", OpenCodeListener())
+```
+
+```bash CLI (Linux/macOS)
+# List all HTTP services
+avahi-browse -rt _http._tcp
+
+# macOS alternative
+dns-sd -B _http._tcp
+```
+</CodeGroup>
+
+### mDNS Platform Support
+
+<Tabs>
+  <Tab title="macOS">
+    Built-in Bonjour support. Works out of the box.
+    
+    ```bash
+    # Test mDNS resolution
+    ping opencode.local
+    ```
+  </Tab>
+  
+  <Tab title="Linux">
+    Requires Avahi daemon:
+    
+    ```bash
+    # Debian/Ubuntu
+    sudo apt install avahi-daemon avahi-utils
+    sudo systemctl enable avahi-daemon
+    sudo systemctl start avahi-daemon
+    
+    # RHEL/CentOS
+    sudo yum install avahi avahi-tools
+    sudo systemctl enable avahi-daemon
+    sudo systemctl start avahi-daemon
+    ```
+  </Tab>
+  
+  <Tab title="Windows">
+    Bonjour included with iTunes or install standalone:
+    
+    [Download Bonjour Print Services](https://support.apple.com/kb/DL999)
+    
+    Or install via Chocolatey:
+    ```powershell
+    choco install bonjour
+    ```
+  </Tab>
+  
+  <Tab title="Docker/Containers">
+    mDNS in containers requires host networking:
+    
+    ```bash
+    docker run --network host \
+      -e OPENCODE_PORT=4096 \
+      opencode/opencode serve --hostname 0.0.0.0 --mdns
+    ```
+    
+    <Note>
+    `--network host` bypasses container networking, making mDNS work but reducing isolation.
+    </Note>
+  </Tab>
+</Tabs>
+
+### Security Considerations
+
+<Warning>
+**mDNS Exposes Your Server to the Local Network**
+
+- Any device on the same network can discover the server
+- Always use `OPENCODE_SERVER_PASSWORD` when enabling mDNS
+- Consider firewall rules to restrict access to trusted subnets
+- mDNS should not be used on untrusted networks (coffee shops, airports)
+</Warning>
+
+```bash
+# Secure mDNS server
+export OPENCODE_SERVER_PASSWORD="strong-password-here"
+opencode serve --hostname 0.0.0.0 --mdns --port 4096
+```
+
+## Firewall Configuration
+
+### Required Ports
+
+<ParamField path="4096" type="TCP" default="yes">
+  Default OpenCode HTTP server port. Customize with `--port`.
+</ParamField>
+
+<ParamField path="5353" type="UDP" default="no">
+  mDNS/Bonjour service discovery. Only needed if `--mdns` is enabled.
+</ParamField>
+
+### Firewall Rules
+
+<CodeGroup>
+```bash Linux (iptables)
+# Allow OpenCode server
+sudo iptables -A INPUT -p tcp --dport 4096 -j ACCEPT
+
+# Allow mDNS (if enabled)
+sudo iptables -A INPUT -p udp --dport 5353 -j ACCEPT
+```
+
+```bash Linux (ufw)
+sudo ufw allow 4096/tcp comment 'OpenCode server'
+sudo ufw allow 5353/udp comment 'OpenCode mDNS'
+```
+
+```bash macOS
+# Add to /etc/pf.conf
+pass in proto tcp to any port 4096
+pass in proto udp to any port 5353
+
+# Reload
+sudo pfctl -f /etc/pf.conf
+```
+
+```powershell Windows
+# Allow inbound
+New-NetFirewallRule -DisplayName "OpenCode Server" `
+  -Direction Inbound -Protocol TCP -LocalPort 4096 -Action Allow
+
+New-NetFirewallRule -DisplayName "OpenCode mDNS" `
+  -Direction Inbound -Protocol UDP -LocalPort 5353 -Action Allow
+```
+</CodeGroup>
+
+## Network Architecture Patterns
+
+### Pattern 1: Local Development (Default)
+
+```
+┌─────────────────┐
+│   Developer     │
+│    Machine      │
+│                 │
+│  ┌───────────┐  │
+│  │    TUI    │  │
+│  └─────┬─────┘  │
+│        │ HTTP   │
+│        ↓        │
+│  ┌───────────┐  │
+│  │  Server   │  │
+│  │ :4096     │  │
+│  └─────┬─────┘  │
+│        │ HTTPS  │
+└────────┼────────┘
+         ↓
+    LLM Provider
+```
+
+- No proxy, no mDNS
+- Localhost only
+- Fastest, most secure
+
+### Pattern 2: Corporate Network with Proxy
+
+```
+┌─────────────────┐
+│   Developer     │
+│    Machine      │
+│                 │
+│  ┌───────────┐  │      ┌──────────┐
+│  │  Server   │  │──────┤  Proxy   │
+│  │ :4096     │  │HTTPS │ :8080    │
+│  └───────────┘  │      └────┬─────┘
+│                 │           │ HTTPS
+└─────────────────┘           ↓
+                         LLM Provider
+```
+
+- `HTTPS_PROXY` configured
+- `NO_PROXY=localhost`
+- Custom CA certificate if proxy intercepts SSL
+
+### Pattern 3: Remote Server with mDNS
+
+```
+      Local Network
+┌──────────────────────────┐
+│                          │
+│  ┌──────────────────┐    │
+│  │  Remote Server   │    │
+│  │                  │    │
+│  │  ┌────────────┐  │    │
+│  │  │   Server   │  │    │
+│  │  │ :4096      │  │    │
+│  │  └──────┬─────┘  │    │
+│  │         │ mDNS   │    │
+│  └─────────┼────────┘    │
+│            ↓             │
+│   ┌────────────────┐     │
+│   │ Client Device  │     │
+│   │ (Laptop/Phone) │     │
+│   └────────────────┘     │
+│                          │
+└──────────────────────────┘
+```
+
+- Server on dedicated machine
+- `--hostname 0.0.0.0 --mdns`
+- Password authentication required
+- Clients auto-discover via mDNS
+
+### Pattern 4: Containerized Deployment
+
+```
+┌────────────────────────────┐
+│      Docker Host           │
+│                            │
+│  ┌──────────────────────┐  │
+│  │  OpenCode Container  │  │
+│  │                      │  │
+│  │    Server :4096      │  │
+│  └──────────────────────┘  │
+│            │               │
+│            │ Bridge Network│
+│            ↓               │
+│  ┌──────────────────────┐  │
+│  │  Reverse Proxy       │  │
+│  │  (Nginx/Caddy)       │  │
+│  │  :443 (HTTPS)        │  │
+│  └──────────┬───────────┘  │
+└─────────────┼──────────────┘
+              ↓
+         Internet
+```
+
+- Expose via reverse proxy with SSL
+- Internal container networking
+- Auth + CORS configured
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Always set NO_PROXY" icon="circle-exclamation">
+    Include `localhost,127.0.0.1` in `NO_PROXY` when using proxies to prevent TUI connection failures.
+  </Card>
+  
+  <Card title="Use HTTPS proxies" icon="lock">
+    Prefer `HTTPS_PROXY` over `HTTP_PROXY` for encrypted proxy connections.
+  </Card>
+  
+  <Card title="Secure mDNS servers" icon="shield">
+    Always set `OPENCODE_SERVER_PASSWORD` when using `--mdns` or `--hostname 0.0.0.0`.
+  </Card>
+  
+  <Card title="Test certificates" icon="certificate">
+    Verify `NODE_EXTRA_CA_CERTS` with `openssl s_client` before running OpenCode.
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Server Architecture" icon="server" href="/server">
+    Learn about the OpenCode server API and architecture.
+  </Card>
+  
+  <Card title="Troubleshooting" icon="wrench" href="/troubleshooting">
+    Diagnose network connectivity issues.
+  </Card>
+  
+  <Card title="Windows WSL Setup" icon="windows" href="/windows-wsl">
+    Optimal network setup for Windows users.
+  </Card>
+</CardGroup>

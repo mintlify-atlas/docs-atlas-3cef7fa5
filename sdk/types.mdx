@@ -1,0 +1,738 @@
+---
+title: 'TypeScript Types'
+description: 'Complete TypeScript type definitions for the OpenCode SDK'
+---
+
+## Overview
+
+The OpenCode SDK includes comprehensive TypeScript definitions generated from the OpenAPI specification. All types are exported from the main package.
+
+```typescript
+import type {
+  Session,
+  Message,
+  Part,
+  Config,
+  Agent,
+  Model,
+  Provider,
+  // ... and many more
+} from '@opencode-ai/sdk'
+```
+
+<Tip>
+  View the complete types file in the [OpenCode repository](https://github.com/anomalyco/opencode/blob/dev/packages/sdk/js/src/gen/types.gen.ts).
+</Tip>
+
+## Core Types
+
+### Session
+
+Represents an AI coding session.
+
+```typescript
+type Session = {
+  id: string
+  projectID: string
+  directory: string
+  parentID?: string
+  title: string
+  version: string
+  time: {
+    created: number
+    updated: number
+    compacting?: number
+  }
+  summary?: {
+    additions: number
+    deletions: number
+    files: number
+    diffs?: FileDiff[]
+  }
+  share?: {
+    url: string
+  }
+  revert?: {
+    messageID: string
+    partID?: string
+    snapshot?: string
+    diff?: string
+  }
+}
+```
+
+### Message
+
+Union type for user and assistant messages.
+
+```typescript
+type Message = UserMessage | AssistantMessage
+
+type UserMessage = {
+  id: string
+  sessionID: string
+  role: 'user'
+  time: { created: number }
+  agent: string
+  model: {
+    providerID: string
+    modelID: string
+  }
+  system?: string
+  tools?: Record<string, boolean>
+  summary?: {
+    title?: string
+    body?: string
+    diffs: FileDiff[]
+  }
+}
+
+type AssistantMessage = {
+  id: string
+  sessionID: string
+  role: 'assistant'
+  time: {
+    created: number
+    completed?: number
+  }
+  parentID: string
+  modelID: string
+  providerID: string
+  mode: string
+  path: {
+    cwd: string
+    root: string
+  }
+  cost: number
+  tokens: {
+    input: number
+    output: number
+    reasoning: number
+    cache: { read: number; write: number }
+  }
+  finish?: string
+  error?: MessageError
+  summary?: boolean
+}
+```
+
+### Part
+
+Message parts (text, file, tool use, etc.).
+
+```typescript
+type Part =
+  | TextPart
+  | ReasoningPart
+  | FilePart
+  | ToolPart
+  | SubtaskPart
+  | StepStartPart
+  | StepFinishPart
+  | SnapshotPart
+  | PatchPart
+  | AgentPart
+  | RetryPart
+  | CompactionPart
+
+type TextPart = {
+  id: string
+  sessionID: string
+  messageID: string
+  type: 'text'
+  text: string
+  synthetic?: boolean
+  ignored?: boolean
+  time?: { start: number; end?: number }
+  metadata?: Record<string, unknown>
+}
+
+type ToolPart = {
+  id: string
+  sessionID: string
+  messageID: string
+  type: 'tool'
+  callID: string
+  tool: string
+  state: ToolState
+  metadata?: Record<string, unknown>
+}
+
+type FilePart = {
+  id: string
+  sessionID: string
+  messageID: string
+  type: 'file'
+  mime: string
+  filename?: string
+  url: string
+  source?: FilePartSource
+}
+```
+
+### ToolState
+
+Tool execution state.
+
+```typescript
+type ToolState =
+  | ToolStatePending
+  | ToolStateRunning
+  | ToolStateCompleted
+  | ToolStateError
+
+type ToolStatePending = {
+  status: 'pending'
+  input: Record<string, unknown>
+  raw: string
+}
+
+type ToolStateRunning = {
+  status: 'running'
+  input: Record<string, unknown>
+  title?: string
+  metadata?: Record<string, unknown>
+  time: { start: number }
+}
+
+type ToolStateCompleted = {
+  status: 'completed'
+  input: Record<string, unknown>
+  output: string
+  title: string
+  metadata: Record<string, unknown>
+  time: { start: number; end: number; compacted?: number }
+  attachments?: FilePart[]
+}
+
+type ToolStateError = {
+  status: 'error'
+  input: Record<string, unknown>
+  error: string
+  metadata?: Record<string, unknown>
+  time: { start: number; end: number }
+}
+```
+
+## Configuration Types
+
+### Config
+
+Main configuration object.
+
+```typescript
+type Config = {
+  $schema?: string
+  theme?: string
+  logLevel?: 'DEBUG' | 'INFO' | 'WARN' | 'ERROR'
+  model?: string
+  small_model?: string
+  username?: string
+  agent?: Record<string, AgentConfig>
+  provider?: Record<string, ProviderConfig>
+  mcp?: Record<string, McpLocalConfig | McpRemoteConfig>
+  command?: Record<string, CommandConfig>
+  plugin?: string[]
+  snapshot?: boolean
+  share?: 'manual' | 'auto' | 'disabled'
+  autoupdate?: boolean | 'notify'
+  instructions?: string[]
+  tools?: Record<string, boolean>
+  permission?: PermissionConfig
+  keybinds?: KeybindsConfig
+  tui?: TuiConfig
+  // ... more options
+}
+```
+
+### AgentConfig
+
+Configuration for individual agents.
+
+```typescript
+type AgentConfig = {
+  model?: string
+  temperature?: number
+  top_p?: number
+  prompt?: string
+  tools?: Record<string, boolean>
+  disable?: boolean
+  description?: string
+  mode?: 'subagent' | 'primary' | 'all'
+  color?: string
+  maxSteps?: number
+  permission?: PermissionConfig
+}
+
+type PermissionConfig = {
+  edit?: 'ask' | 'allow' | 'deny'
+  bash?: 'ask' | 'allow' | 'deny' | Record<string, 'ask' | 'allow' | 'deny'>
+  webfetch?: 'ask' | 'allow' | 'deny'
+  doom_loop?: 'ask' | 'allow' | 'deny'
+  external_directory?: 'ask' | 'allow' | 'deny'
+}
+```
+
+### ProviderConfig
+
+Provider configuration.
+
+```typescript
+type ProviderConfig = {
+  api?: string
+  name?: string
+  env?: string[]
+  id?: string
+  npm?: string
+  models?: Record<string, ModelConfig>
+  whitelist?: string[]
+  blacklist?: string[]
+  options?: {
+    apiKey?: string
+    baseURL?: string
+    enterpriseUrl?: string
+    setCacheKey?: boolean
+    timeout?: number | false
+  }
+}
+
+type ModelConfig = {
+  id?: string
+  name?: string
+  release_date?: string
+  attachment?: boolean
+  reasoning?: boolean
+  temperature?: boolean
+  tool_call?: boolean
+  cost?: {
+    input: number
+    output: number
+    cache_read?: number
+    cache_write?: number
+  }
+  limit?: {
+    context: number
+    output: number
+  }
+  modalities?: {
+    input: ('text' | 'audio' | 'image' | 'video' | 'pdf')[]
+    output: ('text' | 'audio' | 'image' | 'video' | 'pdf')[]
+  }
+  experimental?: boolean
+  status?: 'alpha' | 'beta' | 'deprecated'
+}
+```
+
+## Provider and Model Types
+
+### Provider
+
+Provider information.
+
+```typescript
+type Provider = {
+  id: string
+  name: string
+  source: 'env' | 'config' | 'custom' | 'api'
+  env: string[]
+  key?: string
+  options: Record<string, unknown>
+  models: Record<string, Model>
+}
+```
+
+### Model
+
+Model information.
+
+```typescript
+type Model = {
+  id: string
+  providerID: string
+  api: {
+    id: string
+    url: string
+    npm: string
+  }
+  name: string
+  capabilities: {
+    temperature: boolean
+    reasoning: boolean
+    attachment: boolean
+    toolcall: boolean
+    input: {
+      text: boolean
+      audio: boolean
+      image: boolean
+      video: boolean
+      pdf: boolean
+    }
+    output: {
+      text: boolean
+      audio: boolean
+      image: boolean
+      video: boolean
+      pdf: boolean
+    }
+  }
+  cost: {
+    input: number
+    output: number
+    cache: { read: number; write: number }
+    experimentalOver200K?: {
+      input: number
+      output: number
+      cache: { read: number; write: number }
+    }
+  }
+  limit: {
+    context: number
+    output: number
+  }
+  status: 'alpha' | 'beta' | 'deprecated' | 'active'
+  options: Record<string, unknown>
+  headers: Record<string, string>
+}
+```
+
+### Agent
+
+Agent information.
+
+```typescript
+type Agent = {
+  name: string
+  description?: string
+  mode: 'subagent' | 'primary' | 'all'
+  builtIn: boolean
+  topP?: number
+  temperature?: number
+  color?: string
+  permission: {
+    edit: 'ask' | 'allow' | 'deny'
+    bash: Record<string, 'ask' | 'allow' | 'deny'>
+    webfetch?: 'ask' | 'allow' | 'deny'
+    doom_loop?: 'ask' | 'allow' | 'deny'
+    external_directory?: 'ask' | 'allow' | 'deny'
+  }
+  model?: { modelID: string; providerID: string }
+  prompt?: string
+  tools: Record<string, boolean>
+  options: Record<string, unknown>
+  maxSteps?: number
+}
+```
+
+## Event Types
+
+### Event
+
+Union type for all server events.
+
+```typescript
+type Event =
+  | EventSessionCreated
+  | EventSessionUpdated
+  | EventSessionDeleted
+  | EventSessionStatus
+  | EventSessionIdle
+  | EventMessageUpdated
+  | EventMessagePartUpdated
+  | EventMessageRemoved
+  | EventPermissionUpdated
+  | EventTodoUpdated
+  | EventFileEdited
+  // ... and many more
+
+type EventSessionCreated = {
+  type: 'session.created'
+  properties: { info: Session }
+}
+
+type EventMessageUpdated = {
+  type: 'message.updated'
+  properties: { info: Message }
+}
+
+type EventMessagePartUpdated = {
+  type: 'message.part.updated'
+  properties: { part: Part; delta?: string }
+}
+```
+
+### GlobalEvent
+
+Event with directory context.
+
+```typescript
+type GlobalEvent = {
+  directory: string
+  payload: Event
+}
+```
+
+## File Types
+
+### File
+
+File status information.
+
+```typescript
+type File = {
+  path: string
+  added: number
+  removed: number
+  status: 'added' | 'deleted' | 'modified'
+}
+```
+
+### FileDiff
+
+File diff information.
+
+```typescript
+type FileDiff = {
+  file: string
+  before: string
+  after: string
+  additions: number
+  deletions: number
+}
+```
+
+### FileContent
+
+File content response.
+
+```typescript
+type FileContent = {
+  type: 'text' | 'binary'
+  content: string
+  diff?: string
+  patch?: PatchInfo
+  encoding?: 'base64'
+  mimeType?: string
+}
+```
+
+### Symbol
+
+Workspace symbol.
+
+```typescript
+type Symbol = {
+  name: string
+  kind: number
+  location: {
+    uri: string
+    range: Range
+  }
+}
+
+type Range = {
+  start: { line: number; character: number }
+  end: { line: number; character: number }
+}
+```
+
+## Project Types
+
+### Project
+
+Project information.
+
+```typescript
+type Project = {
+  id: string
+  worktree: string
+  vcsDir?: string
+  vcs?: 'git'
+  time: {
+    created: number
+    initialized?: number
+  }
+}
+```
+
+### Path
+
+Path information.
+
+```typescript
+type Path = {
+  state: string
+  config: string
+  worktree: string
+  directory: string
+}
+```
+
+## Error Types
+
+### Message Errors
+
+```typescript
+type MessageError =
+  | ProviderAuthError
+  | UnknownError
+  | MessageOutputLengthError
+  | MessageAbortedError
+  | ApiError
+
+type ProviderAuthError = {
+  name: 'ProviderAuthError'
+  data: { providerID: string; message: string }
+}
+
+type ApiError = {
+  name: 'APIError'
+  data: {
+    message: string
+    statusCode?: number
+    isRetryable: boolean
+    responseHeaders?: Record<string, string>
+    responseBody?: string
+  }
+}
+```
+
+### API Errors
+
+```typescript
+type BadRequestError = {
+  data: unknown
+  errors: Array<Record<string, unknown>>
+  success: false
+}
+
+type NotFoundError = {
+  name: 'NotFoundError'
+  data: { message: string }
+}
+```
+
+## Permission Types
+
+### Permission
+
+Permission request.
+
+```typescript
+type Permission = {
+  id: string
+  type: string
+  pattern?: string | string[]
+  sessionID: string
+  messageID: string
+  callID?: string
+  title: string
+  metadata: Record<string, unknown>
+  time: { created: number }
+}
+```
+
+## Todo Types
+
+### Todo
+
+Todo item.
+
+```typescript
+type Todo = {
+  id: string
+  content: string
+  status: string
+  priority: string
+}
+```
+
+## Command Types
+
+### Command
+
+Command definition.
+
+```typescript
+type Command = {
+  name: string
+  description?: string
+  agent?: string
+  model?: string
+  template: string
+  subtask?: boolean
+}
+```
+
+## Input Types
+
+These types are used for creating messages:
+
+```typescript
+type TextPartInput = {
+  id?: string
+  type: 'text'
+  text: string
+  synthetic?: boolean
+  ignored?: boolean
+  time?: { start: number; end?: number }
+  metadata?: Record<string, unknown>
+}
+
+type FilePartInput = {
+  id?: string
+  type: 'file'
+  mime: string
+  filename?: string
+  url: string
+  source?: FilePartSource
+}
+
+type SubtaskPartInput = {
+  id?: string
+  type: 'subtask'
+  prompt: string
+  description: string
+  agent: string
+}
+```
+
+## Usage Example
+
+```typescript
+import type {
+  Session,
+  Message,
+  Part,
+  Config,
+  AgentConfig,
+  Event,
+} from '@opencode-ai/sdk'
+import { createOpencodeClient } from '@opencode-ai/sdk'
+
+const client = createOpencodeClient()
+
+// Types are inferred automatically
+const sessions = await client.session.list()
+const session: Session = sessions.data[0]
+
+const messages = await client.session.messages({
+  path: { id: session.id },
+})
+
+for (const msg of messages.data) {
+  const info: Message = msg.info
+  const parts: Part[] = msg.parts
+  
+  console.log(`${info.role}: ${parts.length} parts`)
+}
+
+// Subscribe to events
+const events = await client.event.subscribe()
+for await (const event of events.stream) {
+  const evt: Event = event.payload
+  
+  if (evt.type === 'message.updated') {
+    console.log('Message updated:', evt.properties.info.id)
+  }
+}
+```

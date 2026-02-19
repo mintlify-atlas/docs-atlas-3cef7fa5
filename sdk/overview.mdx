@@ -1,0 +1,228 @@
+---
+title: 'SDK Overview'
+description: 'Build programmatic integrations with OpenCode using the JavaScript/TypeScript SDK'
+---
+
+The OpenCode SDK provides a type-safe JavaScript/TypeScript client for programmatic interaction with the OpenCode server. Use it to build integrations, automate workflows, and control OpenCode from your own applications.
+
+## Features
+
+- **Type-safe API**: Full TypeScript support with auto-generated types from OpenAPI specification
+- **Server Management**: Start and manage OpenCode server instances programmatically
+- **Session Control**: Create, manage, and interact with AI coding sessions
+- **Real-time Events**: Subscribe to server-sent events for live updates
+- **File Operations**: Search, read, and manage project files
+- **Configuration**: Programmatically configure models, agents, and providers
+- **Plugin Development**: Build custom tools and extensions
+
+## Installation
+
+Install the SDK from npm:
+
+```bash
+npm install @opencode-ai/sdk
+```
+
+Or with other package managers:
+
+```bash
+yarn add @opencode-ai/sdk
+pnpm add @opencode-ai/sdk
+bun add @opencode-ai/sdk
+```
+
+## Quick Start
+
+### Server + Client
+
+Create a complete OpenCode instance with both server and client:
+
+```typescript
+import { createOpencode } from '@opencode-ai/sdk'
+
+const { client, server } = await createOpencode({
+  hostname: '127.0.0.1',
+  port: 4096,
+  config: {
+    model: 'anthropic/claude-3-5-sonnet-20241022',
+  },
+})
+
+// Use the client
+const health = await client.global.health()
+console.log(`Server version: ${health.data.version}`)
+
+// Clean up when done
+server.close()
+```
+
+### Client Only
+
+Connect to an existing OpenCode server:
+
+```typescript
+import { createOpencodeClient } from '@opencode-ai/sdk'
+
+const client = createOpencodeClient({
+  baseUrl: 'http://localhost:4096',
+})
+
+const sessions = await client.session.list()
+console.log(`Active sessions: ${sessions.data.length}`)
+```
+
+## Architecture
+
+The SDK is organized into several namespaces:
+
+- **global**: Server health and global events
+- **session**: Session management and AI interactions
+- **project**: Project information and navigation
+- **config**: Configuration management
+- **file/find**: File operations and search
+- **app**: Application-level operations
+- **tui**: Terminal UI control
+- **auth**: Authentication management
+- **event**: Real-time event subscriptions
+
+## Common Use Cases
+
+### Build Integrations
+
+Connect OpenCode to other tools, CI/CD pipelines, or custom workflows:
+
+```typescript
+const session = await client.session.create({
+  body: { title: 'Automated Review' },
+})
+
+await client.session.prompt({
+  path: { id: session.data.id },
+  body: {
+    parts: [{ type: 'text', text: 'Review recent changes' }],
+  },
+})
+```
+
+### Automate Testing
+
+Generate tests programmatically:
+
+```typescript
+await client.session.command({
+  path: { id: sessionId },
+  body: {
+    name: 'test',
+    arguments: 'src/utils.ts',
+  },
+})
+```
+
+### Custom Dashboards
+
+Build monitoring dashboards with real-time updates:
+
+```typescript
+const events = await client.event.subscribe()
+
+for await (const event of events.stream) {
+  if (event.type === 'session.updated') {
+    updateDashboard(event.properties.info)
+  }
+}
+```
+
+### Extract Structured Data
+
+Use structured output to extract information:
+
+```typescript
+const result = await client.session.prompt({
+  path: { id: sessionId },
+  body: {
+    parts: [{ type: 'text', text: 'Analyze this codebase' }],
+    format: {
+      type: 'json_schema',
+      schema: {
+        type: 'object',
+        properties: {
+          languages: { type: 'array', items: { type: 'string' } },
+          frameworks: { type: 'array', items: { type: 'string' } },
+          complexity: { type: 'string', enum: ['low', 'medium', 'high'] },
+        },
+      },
+    },
+  },
+})
+
+const analysis = result.data.info.structured_output
+```
+
+## Type Safety
+
+All API responses and request parameters are fully typed:
+
+```typescript
+import type { Session, Message, Part, Config } from '@opencode-ai/sdk'
+
+// TypeScript will validate your code
+const session: Session = await client.session.get({
+  path: { id: 'session-id' },
+})
+
+const messages: { info: Message; parts: Part[] }[] = await client.session.messages({
+  path: { id: session.data.id },
+})
+```
+
+## Error Handling
+
+Handle errors gracefully:
+
+```typescript
+try {
+  const session = await client.session.get({
+    path: { id: 'invalid-id' },
+  })
+} catch (error) {
+  if (error instanceof Error) {
+    console.error('Failed to get session:', error.message)
+  }
+}
+```
+
+Or configure the client to return errors instead of throwing:
+
+```typescript
+const client = createOpencodeClient({
+  baseUrl: 'http://localhost:4096',
+  throwOnError: false,
+})
+
+const result = await client.session.get({
+  path: { id: 'invalid-id' },
+})
+
+if (result.error) {
+  console.error('Error:', result.error)
+} else {
+  console.log('Session:', result.data)
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Client API" icon="code" href="/sdk/client">
+    Learn about client creation and configuration
+  </Card>
+  <Card title="Configuration" icon="gear" href="/sdk/configuration">
+    Configure OpenCode programmatically
+  </Card>
+  <Card title="Types" icon="brackets-curly" href="/sdk/types">
+    Explore TypeScript types and interfaces
+  </Card>
+  <Card title="Plugin Development" icon="plug" href="/sdk/plugin-api">
+    Build custom tools and extensions
+  </Card>
+</CardGroup>

@@ -1,0 +1,679 @@
+---
+title: Tools
+description: Available tools and how to configure them.
+---
+
+OpenCode provides a comprehensive set of tools that agents can use to interact with your codebase, execute commands, and access external resources. Tools can be enabled or disabled globally or per-agent to control what actions the AI can perform.
+
+---
+
+## File Operations
+
+Tools for reading, writing, and modifying files in your codebase.
+
+<Accordion title="Read">
+**Purpose**: Read files or directories from the local filesystem.
+
+**Capabilities**:
+- Read up to 2000 lines by default from any file
+- Support for offset and limit parameters for reading specific sections
+- Can read image files and PDFs
+- Returns content with line numbers for easy reference
+- Directory listing with trailing `/` for subdirectories
+
+**Usage**:
+```json
+{
+  "tools": {
+    "read": true
+  }
+}
+```
+
+**Common use cases**:
+- Reading source code files
+- Examining configuration files
+- Listing directory contents
+- Reading documentation
+</Accordion>
+
+<Accordion title="Write">
+**Purpose**: Create new files or overwrite existing files.
+
+**Capabilities**:
+- Create new files with specified content
+- Overwrite existing files (requires reading the file first)
+- Atomic write operations
+
+**Usage**:
+```json
+{
+  "tools": {
+    "write": true
+  }
+}
+```
+
+**Common use cases**:
+- Creating new source files
+- Generating configuration files
+- Writing documentation
+- Creating test files
+</Accordion>
+
+<Accordion title="Edit">
+**Purpose**: Perform exact string replacements in files.
+
+**Capabilities**:
+- Find and replace exact text matches
+- Support for `replaceAll` to rename across entire file
+- Requires reading the file first
+- Preserves exact indentation and formatting
+
+**Usage**:
+```json
+{
+  "tools": {
+    "edit": true
+  }
+}
+```
+
+**Common use cases**:
+- Modifying existing code
+- Fixing bugs
+- Refactoring variable names
+- Updating function implementations
+
+**Note**: See also `multiedit` for making multiple edits to a single file in one operation.
+</Accordion>
+
+<Accordion title="MultiEdit">
+**Purpose**: Make multiple edits to a single file in one operation.
+
+**Capabilities**:
+- Perform multiple find-and-replace operations efficiently
+- Edits applied sequentially in order
+- Atomic operation (all edits succeed or none are applied)
+- Built on top of the Edit tool
+
+**Usage**:
+```json
+{
+  "tools": {
+    "multiedit": true
+  }
+}
+```
+
+**Common use cases**:
+- Refactoring multiple parts of a file
+- Updating multiple function calls
+- Batch renaming within a file
+</Accordion>
+
+<Accordion title="Apply Patch">
+**Purpose**: Apply structured patches to create, update, or delete files.
+
+**Capabilities**:
+- Create new files with `*** Add File:`
+- Update existing files with `*** Update File:`
+- Delete files with `*** Delete File:`
+- Rename files with `*** Move to:`
+- Unified diff-style syntax
+
+**Usage**:
+```json
+{
+  "tools": {
+    "patch": true
+  }
+}
+```
+
+**Example patch format**:
+```
+*** Begin Patch
+*** Add File: hello.txt
++Hello world
+*** Update File: src/app.py
+@@ def greet():
+-print("Hi")
++print("Hello, world!")
+*** Delete File: obsolete.txt
+*** End Patch
+```
+</Accordion>
+
+---
+
+## Code Search & Discovery
+
+Tools for finding files and searching code.
+
+<Accordion title="Glob">
+**Purpose**: Fast file pattern matching using glob patterns.
+
+**Capabilities**:
+- Find files by name patterns like `**/*.js` or `src/**/*.ts`
+- Works with any codebase size
+- Returns matching file paths sorted by modification time
+
+**Usage**:
+```json
+{
+  "tools": {
+    "glob": true
+  }
+}
+```
+
+**Common use cases**:
+- Finding all files of a specific type
+- Locating test files
+- Finding configuration files
+- Discovering components by pattern
+</Accordion>
+
+<Accordion title="Grep">
+**Purpose**: Fast content search using regular expressions.
+
+**Capabilities**:
+- Search file contents with full regex syntax
+- Filter by file patterns with include parameter
+- Returns file paths and line numbers with matches
+- Sorted by modification time
+
+**Usage**:
+```json
+{
+  "tools": {
+    "grep": true
+  }
+}
+```
+
+**Common use cases**:
+- Finding function definitions
+- Searching for error messages
+- Locating TODO comments
+- Finding API usage patterns
+</Accordion>
+
+<Accordion title="List (ls)">
+**Purpose**: List files and directories in a given path.
+
+**Capabilities**:
+- List directory contents
+- Support for glob patterns to ignore files
+- Uses absolute paths
+
+**Usage**:
+```json
+{
+  "tools": {
+    "list": true
+  }
+}
+```
+
+**Common use cases**:
+- Exploring directory structure
+- Checking if directories exist
+- Verifying file organization
+</Accordion>
+
+<Accordion title="CodeSearch">
+**Purpose**: Search and get relevant context for programming tasks using Exa Code API.
+
+**Capabilities**:
+- Provides high-quality, fresh context for libraries, SDKs, and APIs
+- Returns comprehensive code examples and documentation
+- Adjustable token count (1000-50000)
+- Optimized for finding specific programming patterns
+
+**Usage**:
+```json
+{
+  "tools": {
+    "codesearch": true
+  }
+}
+```
+
+**Common use cases**:
+- Finding library usage examples
+- Learning API patterns
+- Discovering best practices
+- Understanding framework concepts
+</Accordion>
+
+---
+
+## Code Intelligence
+
+Tools for advanced code analysis and navigation.
+
+<Accordion title="LSP (Language Server Protocol)">
+**Purpose**: Interact with Language Server Protocol servers for code intelligence.
+
+**Capabilities**:
+- **Go to Definition**: Find where symbols are defined
+- **Find References**: Find all references to a symbol
+- **Hover**: Get documentation and type information
+- **Document Symbol**: Get all symbols in a document
+- **Workspace Symbol**: Search for symbols across workspace
+- **Go to Implementation**: Find interface implementations
+- **Call Hierarchy**: Analyze function call relationships
+- **Incoming/Outgoing Calls**: Map caller/callee relationships
+
+**Usage**:
+```json
+{
+  "tools": {
+    "lsp": true
+  }
+}
+```
+
+**Common use cases**:
+- Understanding code structure
+- Tracing function calls
+- Finding symbol usages
+- Code navigation and exploration
+
+**Note**: LSP servers must be configured for the file type.
+</Accordion>
+
+---
+
+## System Operations
+
+Tools for executing commands and system operations.
+
+<Accordion title="Bash">
+**Purpose**: Execute shell commands in a persistent bash session.
+
+**Capabilities**:
+- Run terminal operations (git, npm, docker, etc.)
+- Persistent shell session across commands
+- Optional timeout configuration
+- Support for workdir parameter to change directories
+- Automatic output truncation for large outputs
+
+**Usage**:
+```json
+{
+  "tools": {
+    "bash": true
+  }
+}
+```
+
+**Common use cases**:
+- Running git commands
+- Installing dependencies (npm, pip, etc.)
+- Running tests and builds
+- Executing scripts
+- System diagnostics
+
+**Best practices**:
+- Use `workdir` parameter instead of `cd && command`
+- Quote paths with spaces
+- Chain dependent commands with `&&`
+- Use specialized tools for file operations instead of cat/grep/sed
+</Accordion>
+
+---
+
+## Task Management
+
+Tools for managing and tracking work.
+
+<Accordion title="TodoWrite">
+**Purpose**: Create and manage structured task lists for coding sessions.
+
+**Capabilities**:
+- Create, update, and manage todo items
+- Track task states (pending, in_progress, completed, cancelled)
+- Organize complex multi-step tasks
+- Provide progress visibility to users
+
+**Usage**:
+```json
+{
+  "tools": {
+    "todowrite": true
+  }
+}
+```
+
+**When to use**:
+- Complex multi-step tasks (3+ steps)
+- Non-trivial and complex tasks
+- User provides multiple tasks
+- Planning and tracking implementation
+
+**Task states**:
+- `pending`: Task not yet started
+- `in_progress`: Currently working on (limit to ONE at a time)
+- `completed`: Task finished successfully
+- `cancelled`: Task no longer needed
+</Accordion>
+
+<Accordion title="TodoRead">
+**Purpose**: Read the current todo list for the session.
+
+**Capabilities**:
+- View all todo items with their status
+- Check progress on tasks
+- Understand what work remains
+
+**Usage**:
+```json
+{
+  "tools": {
+    "todoread": true
+  }
+}
+```
+
+**When to use**:
+- Beginning of conversations to see what's pending
+- Before starting new tasks to prioritize
+- When uncertain about what to do next
+- After completing tasks to see remaining work
+</Accordion>
+
+---
+
+## Agent Orchestration
+
+Tools for invoking specialized agents.
+
+<Accordion title="Task">
+**Purpose**: Launch specialized subagents to handle complex, multi-step tasks autonomously.
+
+**Capabilities**:
+- Invoke General and Explore subagents
+- Launch multiple agents concurrently
+- Resume existing subagent sessions with task_id
+- Execute custom slash commands
+
+**Usage**:
+```json
+{
+  "tools": {
+    "task": true
+  }
+}
+```
+
+**Available subagents**:
+- **General**: Full tool access for complex tasks and research
+- **Explore**: Read-only agent for fast codebase exploration
+
+**Common use cases**:
+- Running multiple units of work in parallel
+- Delegating complex research tasks
+- Fast code exploration without modification risk
+- Executing custom slash commands
+
+**Best practices**:
+- Launch multiple agents in parallel when possible
+- Provide detailed task descriptions
+- Specify what information should be returned
+- Tell agents whether to write code or just research
+</Accordion>
+
+---
+
+## Web Access
+
+Tools for accessing external web content.
+
+<Accordion title="WebFetch">
+**Purpose**: Fetch content from specified URLs.
+
+**Capabilities**:
+- Fetch web content in markdown, text, or HTML format
+- Automatic HTTPS upgrade for HTTP URLs
+- Read-only operations
+- Content summarization for large pages
+
+**Usage**:
+```json
+{
+  "tools": {
+    "webfetch": true
+  }
+}
+```
+
+**Common use cases**:
+- Reading documentation from websites
+- Fetching API documentation
+- Accessing online resources
+- Reading blog posts or articles
+</Accordion>
+
+<Accordion title="WebSearch">
+**Purpose**: Search the web using Exa AI with real-time web searches.
+
+**Capabilities**:
+- Real-time web searches for current information
+- Configurable result counts
+- Live crawling modes (fallback or preferred)
+- Search types: auto, fast, or deep
+- Domain filtering and advanced search options
+
+**Usage**:
+```json
+{
+  "tools": {
+    "websearch": true
+  }
+}
+```
+
+**Common use cases**:
+- Finding current events and recent information
+- Accessing information beyond knowledge cutoff
+- Researching latest library versions
+- Looking up recent API changes
+</Accordion>
+
+---
+
+## User Interaction
+
+Tools for gathering user input during execution.
+
+<Accordion title="Question">
+**Purpose**: Ask users questions during execution to gather preferences or clarify requirements.
+
+**Capabilities**:
+- Present multiple choice questions
+- Support for single or multiple selection
+- Optional "Type your own answer" option (enabled by default)
+- Recommend specific options
+
+**Usage**:
+```json
+{
+  "tools": {
+    "question": true
+  }
+}
+```
+
+**Common use cases**:
+- Gathering user preferences
+- Clarifying ambiguous instructions
+- Getting decisions on implementation choices
+- Offering choices for direction
+</Accordion>
+
+---
+
+## Performance Optimization
+
+Tools for efficient batch operations.
+
+<Accordion title="Batch">
+**Purpose**: Execute multiple independent tool calls concurrently to reduce latency.
+
+**Capabilities**:
+- Run 1-25 tool calls in parallel
+- All calls start simultaneously
+- Partial failures don't stop other tool calls
+- Significant efficiency gains (2-5x improvement)
+
+**Usage**:
+```json
+{
+  "tools": {
+    "batch": true
+  }
+}
+```
+
+**Good use cases**:
+- Reading many files
+- Grep + glob + read combinations
+- Multiple bash commands
+- Multi-part edits on same or different files
+
+**When NOT to use**:
+- Operations depending on prior tool output
+- Ordered stateful mutations where sequence matters
+
+**Example payload**:
+```json
+[
+  {"tool": "read", "parameters": {"filePath": "src/index.ts"}},
+  {"tool": "grep", "parameters": {"pattern": "Session", "include": "*.ts"}},
+  {"tool": "bash", "parameters": {"command": "git status", "description": "Check git status"}}
+]
+```
+</Accordion>
+
+---
+
+## Configuration
+
+### Global Tool Configuration
+
+Enable or disable tools globally in your `opencode.json`:
+
+```json title="opencode.json"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "tools": {
+    "read": true,
+    "write": true,
+    "edit": true,
+    "bash": true,
+    "grep": true,
+    "glob": true,
+    "webfetch": true,
+    "todowrite": true,
+    "todoread": true
+  }
+}
+```
+
+### Per-Agent Tool Configuration
+
+Override tool access for specific agents:
+
+```json title="opencode.json"
+{
+  "agent": {
+    "plan": {
+      "tools": {
+        "write": false,
+        "edit": false,
+        "bash": false
+      }
+    },
+    "readonly": {
+      "tools": {
+        "write": false,
+        "edit": false,
+        "patch": false,
+        "multiedit": false,
+        "bash": false
+      }
+    }
+  }
+}
+```
+
+### Wildcard Tool Control
+
+Use wildcards to control multiple tools at once:
+
+```json title="opencode.json"
+{
+  "agent": {
+    "custom": {
+      "tools": {
+        "mymcp_*": false,
+        "*edit*": false
+      }
+    }
+  }
+}
+```
+
+<Note>
+Agent-specific tool configurations override the global configuration.
+</Note>
+
+---
+
+## Best Practices
+
+<Tip>
+**Use specialized tools over bash**: Prefer `read`, `grep`, and `glob` over `cat`, `grep`, and `find` commands in bash for better integration and efficiency.
+</Tip>
+
+<Tip>
+**Batch independent operations**: Use the `batch` tool to run multiple independent operations in parallel for significant performance improvements.
+</Tip>
+
+<Tip>
+**Read before write**: Always use the `read` tool before using `write` or `edit` on existing files to understand the current state.
+</Tip>
+
+<Tip>
+**Use Task tool for exploration**: When doing open-ended code searches or exploration, use the `task` tool with the Explore subagent instead of running searches directly.
+</Tip>
+
+---
+
+## Complete Tool List
+
+Here's a complete list of all available tools:
+
+| Tool | Category | Purpose |
+|------|----------|----------|
+| `read` | File Operations | Read files and directories |
+| `write` | File Operations | Create or overwrite files |
+| `edit` | File Operations | Modify existing files |
+| `multiedit` | File Operations | Multiple edits in one file |
+| `patch` | File Operations | Apply structured patches |
+| `glob` | Code Search | Find files by pattern |
+| `grep` | Code Search | Search file contents |
+| `list` | Code Search | List directory contents |
+| `codesearch` | Code Search | AI-powered code search |
+| `lsp` | Code Intelligence | Language server operations |
+| `bash` | System Operations | Execute shell commands |
+| `todowrite` | Task Management | Create and manage todos |
+| `todoread` | Task Management | Read todo lists |
+| `task` | Agent Orchestration | Launch subagents |
+| `webfetch` | Web Access | Fetch web content |
+| `websearch` | Web Access | Search the web |
+| `question` | User Interaction | Ask user questions |
+| `batch` | Performance | Execute tools in parallel |

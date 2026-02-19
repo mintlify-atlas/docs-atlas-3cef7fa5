@@ -1,0 +1,481 @@
+---
+title: "agent"
+description: "Manage custom agents for specialized tasks"
+---
+
+## Overview
+
+The `agent` command helps you create and manage custom agents with specialized system prompts and tool configurations. Agents can be:
+
+- **Primary agents**: Act as the main assistant
+- **Subagents**: Specialized agents invoked by other agents
+- **All-purpose**: Can function in both roles
+
+## Usage
+
+```bash
+opencode agent [command]
+```
+
+## Subcommands
+
+<CardGroup cols={2}>
+  <Card title="create" icon="plus">
+    Generate a new custom agent
+  </Card>
+  <Card title="list" icon="list">
+    Show all available agents
+  </Card>
+</CardGroup>
+
+---
+
+## create
+
+Create a new agent with custom configuration.
+
+### Usage
+
+```bash
+opencode agent create
+```
+
+### Interactive Flow
+
+The command guides you through creating an agent:
+
+1. **Choose location**: Global or project-specific
+2. **Describe purpose**: What the agent should do
+3. **Generate configuration**: LLM creates system prompt
+4. **Select tools**: Choose which tools to enable
+5. **Set mode**: Primary, subagent, or both
+
+### Example Session
+
+```bash
+opencode agent create
+```
+
+```
+◆ Location
+│ ● Current project (/path/to/project)
+│   Global (~/.config/opencode)
+└
+
+◆ Description
+│ A TypeScript expert that helps write type-safe code
+└
+
+◇ Agent typescript-expert generated
+
+◆ Select tools to enable (Space to toggle)
+│ ◼ bash
+│ ◼ read
+│ ◼ write
+│ ◼ edit
+│ ◼ list
+│ ◼ glob
+│ ◼ grep
+│ ◼ webfetch
+│ ◻ task
+│ ◻ todowrite
+│ ◻ todoread
+└
+
+◆ Agent mode
+│ ● All
+│   Primary
+│   Subagent
+└
+
+✓ Agent created: .opencode/agent/typescript-expert.md
+✓ Done
+```
+
+### Options
+
+<ParamField path="--path" type="string">
+  Directory path to generate the agent file
+</ParamField>
+
+<ParamField path="--description" type="string">
+  What the agent should do
+</ParamField>
+
+<ParamField path="--mode" type="string">
+  Agent mode: `all`, `primary`, or `subagent`
+</ParamField>
+
+<ParamField path="--tools" type="string">
+  Comma-separated list of tools to enable. Empty string disables all tools.
+</ParamField>
+
+<ParamField path="--model" type="string">
+  Model to use for agent generation (format: `provider/model`). Short form: `-m`
+</ParamField>
+
+### Non-Interactive Mode
+
+Provide all options to create an agent without prompts:
+
+```bash
+opencode agent create \
+  --path .opencode \
+  --description "TypeScript expert for type-safe code" \
+  --mode all \
+  --tools "bash,read,write,edit,glob,grep" \
+  --model anthropic/claude-4.5-sonnet
+```
+
+The command outputs the created file path:
+```
+.opencode/agent/typescript-expert.md
+```
+
+---
+
+## list
+
+Show all available agents.
+
+### Usage
+
+```bash
+opencode agent list
+```
+
+### Example Output
+
+```
+default (all)
+  {"enabled":true,"tools":["bash","read","write",...]}
+  
+typescript-expert (primary)
+  {"enabled":true,"tools":["bash","read","write","edit","glob","grep"]}
+  
+security-auditor (subagent)
+  {"enabled":true,"tools":["read","grep","bash"]}
+```
+
+Shows:
+- Agent name and mode
+- Permission/tool configuration
+- Whether agent is enabled
+
+---
+
+## Agent Structure
+
+Agents are Markdown files with YAML frontmatter:
+
+```markdown
+---
+description: When to use this agent
+mode: all
+tools:
+  bash: true
+  read: true
+  write: true
+  task: false
+  todowrite: false
+---
+
+You are a TypeScript expert specializing in type-safe code...
+
+## Guidelines
+
+- Always use explicit types
+- Prefer interfaces over types
+- Use strict mode
+```
+
+### Frontmatter Fields
+
+<ParamField path="description" type="string" required>
+  Brief description of when to use this agent. Shown to other agents when selecting subagents.
+</ParamField>
+
+<ParamField path="mode" type="string" default="all">
+  Agent mode:
+  - `all`: Can be primary or subagent
+  - `primary`: Only usable as main agent
+  - `subagent`: Only for task delegation
+</ParamField>
+
+<ParamField path="tools" type="object">
+  Tool configuration. Omitted tools default to enabled. Set to `false` to disable:
+  
+  ```yaml
+  tools:
+    bash: false
+    task: false
+  ```
+</ParamField>
+
+### Available Tools
+
+- **bash**: Execute shell commands
+- **read**: Read file contents
+- **write**: Create new files
+- **edit**: Modify existing files
+- **list**: List directory contents
+- **glob**: Find files by pattern
+- **grep**: Search file contents
+- **webfetch**: Fetch web pages
+- **task**: Delegate to subagents
+- **todowrite**: Manage task lists
+- **todoread**: Read task lists
+
+## Agent Locations
+
+### Project Agents
+
+Stored in `.opencode/agent/` in your project:
+
+```
+my-project/
+├── .opencode/
+│   └── agent/
+│       ├── typescript-expert.md
+│       └── api-designer.md
+```
+
+Available only in this project.
+
+### Global Agents
+
+Stored in `~/.config/opencode/agent/`:
+
+```
+~/.config/opencode/
+└── agent/
+    ├── security-auditor.md
+    └── documentation-writer.md
+```
+
+Available in all projects.
+
+### Priority
+
+Project agents override global agents with the same name.
+
+## Using Agents
+
+### Primary Agent
+
+Select agent when starting OpenCode:
+
+```bash
+opencode --agent typescript-expert
+```
+
+Or in configuration:
+
+```json
+{
+  "agent": "typescript-expert"
+}
+```
+
+Switch agents mid-session:
+
+```
+/agent security-auditor
+```
+
+### Subagent Delegation
+
+Agents can invoke specialized subagents:
+
+```
+User: "Audit the authentication code for security issues"
+
+Assistant uses Task tool:
+  subagent_type: security-auditor
+  description: Review auth.ts for security vulnerabilities
+```
+
+The main agent:
+1. Identifies the need for specialized help
+2. Selects appropriate subagent based on descriptions
+3. Delegates the subtask
+4. Receives results and continues
+
+## Agent Generation
+
+When you create an agent, OpenCode uses an LLM to generate:
+
+- **Identifier**: Filename-safe name (e.g., `typescript-expert`)
+- **Description**: When to use this agent
+- **System prompt**: Detailed instructions and guidelines
+
+### Generation Model
+
+By default, uses your configured default model. Override with `--model`:
+
+```bash
+opencode agent create --model anthropic/claude-4.5-sonnet
+```
+
+### Generation Quality
+
+For best results:
+- Be specific in your description
+- Mention key technologies or domains
+- Include constraints or preferences
+- Reference coding standards if applicable
+
+Example descriptions:
+
+```bash
+# ✓ Good
+"React expert specializing in hooks, performance optimization, and accessibility"
+
+# ✗ Too vague
+"Help with React"
+```
+
+## Example Agents
+
+### Security Auditor
+
+```markdown
+---
+description: Security expert for finding vulnerabilities and suggesting fixes
+mode: subagent
+tools:
+  read: true
+  grep: true
+  bash: true
+  write: false
+  edit: false
+---
+
+You are a security expert specializing in code audits...
+
+## Focus Areas
+
+- Authentication and authorization
+- Input validation and sanitization
+- SQL injection and XSS prevention
+- Secure API design
+```
+
+### Documentation Writer
+
+```markdown
+---
+description: Technical writer for creating clear, comprehensive documentation
+mode: all
+tools:
+  read: true
+  write: true
+  edit: true
+  glob: true
+---
+
+You are a technical writer who creates clear documentation...
+
+## Style Guide
+
+- Use active voice
+- Write in second person
+- Include code examples
+- Structure with clear headings
+```
+
+### Test Specialist
+
+```markdown
+---
+description: Testing expert for writing unit and integration tests
+mode: subagent
+tools:
+  read: true
+  write: true
+  bash: true
+---
+
+You specialize in writing comprehensive tests...
+
+## Testing Principles
+
+- Test behavior, not implementation
+- Arrange-Act-Assert pattern
+- Meaningful test names
+- Mock external dependencies
+```
+
+## Best Practices
+
+<CardGroup>
+  <Card title="Focused agents" icon="target">
+    Create specialized agents for specific domains rather than generalists
+  </Card>
+  <Card title="Clear descriptions" icon="message">
+    Write descriptions that help other agents know when to delegate
+  </Card>
+  <Card title="Minimal tools" icon="toolbox">
+    Only enable tools the agent needs to reduce confusion
+  </Card>
+  <Card title="Consistent style" icon="palette">
+    Follow the same structure across your agent files
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Agent Not Found
+
+**Problem**: `agent "name" not found`
+
+**Solutions**:
+- Run `opencode agent list` to see available agents
+- Check filename matches agent name
+- Verify file is in correct location (`.opencode/agent/` or `~/.config/opencode/agent/`)
+- Ensure file has `.md` extension
+
+### Generation Failed
+
+**Problem**: LLM fails to generate agent
+
+**Solutions**:
+- Check you're authenticated: `opencode auth list`
+- Try a different model with `--model`
+- Make description more specific
+- Check internet connectivity
+
+### Subagent Mode Error
+
+**Problem**: `agent "name" is a subagent, not a primary agent`
+
+**Solutions**:
+- Use a different agent marked as `primary` or `all`
+- Change the agent's mode to `all` in its frontmatter
+- Run `opencode agent list` to see agent modes
+
+### File Already Exists
+
+**Problem**: `Agent file already exists`
+
+**Solutions**:
+- Delete or rename the existing agent file
+- Use a different description that generates a unique identifier
+- Manually create with a custom filename
+
+## Related Topics
+
+<CardGroup cols={2}>
+  <Card title="Agents Concept" icon="brain" href="/agents">
+    Learn about how agents work
+  </Card>
+  <Card title="Tools" icon="wrench" href="/tools">
+    Understand available tools
+  </Card>
+  <Card title="Permissions" icon="shield" href="/permissions">
+    Configure agent permissions
+  </Card>
+  <Card title="Configuration" icon="gear" href="/config">
+    Set default agent in config
+  </Card>
+</CardGroup>

@@ -1,0 +1,933 @@
+---
+title: 'Troubleshooting'
+description: 'Diagnose and resolve common OpenCode issues with detailed debugging guides'
+icon: 'wrench'
+---
+
+This guide covers common issues, debugging techniques, and solutions for OpenCode problems.
+
+## Diagnostic Steps
+
+Before diving into specific issues, gather diagnostic information:
+
+<Steps>
+  <Step title="Check logs">
+    Log files are your first stop for debugging:
+    
+    <Tabs>
+      <Tab title="macOS/Linux">
+        ```bash
+        ls -ltr ~/.local/share/opencode/log/
+        tail -f ~/.local/share/opencode/log/$(ls -t ~/.local/share/opencode/log/ | head -1)
+        ```
+      </Tab>
+      
+      <Tab title="Windows">
+        ```powershell
+        # Press WIN+R, paste:
+        %USERPROFILE%\.local\share\opencode\log
+        
+        # View latest log
+        Get-Content (Get-ChildItem $env:USERPROFILE\.local\share\opencode\log | Sort-Object LastWriteTime -Descending | Select-Object -First 1).FullName -Tail 50
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+  
+  <Step title="Increase log verbosity">
+    ```bash
+    opencode --log-level DEBUG
+    ```
+    
+    Or set persistently:
+    ```json opencode.json
+    {
+      "logLevel": "debug"
+    }
+    ```
+  </Step>
+  
+  <Step title="Check version">
+    ```bash
+    opencode --version
+    ```
+    
+    Ensure you're on the latest version:
+    ```bash
+    opencode upgrade
+    ```
+  </Step>
+  
+  <Step title="Verify storage health">
+    ```bash
+    # Check for corruption
+    sqlite3 ~/.local/share/opencode/project/*/storage/*.db "PRAGMA integrity_check;"
+    ```
+  </Step>
+</Steps>
+
+## Common Issues
+
+### OpenCode Won't Start
+
+<AccordionGroup>
+  <Accordion title="Symptom: Command not found" icon="circle-exclamation">
+    **Error:**
+    ```
+    bash: opencode: command not found
+    ```
+    
+    **Cause:** Binary not in `PATH` or installation incomplete.
+    
+    **Solutions:**
+    
+    <Steps>
+      <Step title="Verify installation">
+        ```bash
+        which opencode
+        # Should print: /usr/local/bin/opencode or ~/.local/bin/opencode
+        ```
+      </Step>
+      
+      <Step title="Reinstall if missing">
+        ```bash
+        curl -fsSL https://opencode.ai/install | bash
+        ```
+      </Step>
+      
+      <Step title="Add to PATH manually">
+        ```bash
+        # For bash
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+        source ~/.bashrc
+        
+        # For zsh
+        echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+        source ~/.zshrc
+        ```
+      </Step>
+      
+      <Step title="Restart terminal">
+        Close and reopen your terminal window.
+      </Step>
+    </Steps>
+  </Accordion>
+  
+  <Accordion title="Symptom: Crashes immediately" icon="bomb">
+    **Error:** OpenCode starts then exits within seconds.
+    
+    **Debugging:**
+    
+    ```bash
+    # Run with logs to stdout
+    opencode --print-logs
+    
+    # Check for specific error messages
+    tail -100 ~/.local/share/opencode/log/*.log | grep -i error
+    ```
+    
+    **Common causes:**
+    
+    <AccordionGroup>
+      <Accordion title="Port conflict">
+        ```bash
+        # Find process using port 4096
+        lsof -i :4096
+        
+        # Kill conflicting process
+        kill -9 <PID>
+        
+        # Or use different port
+        opencode --port 4097
+        ```
+      </Accordion>
+      
+      <Accordion title="Corrupted config">
+        ```bash
+        # Backup and reset config
+        mv ~/.config/opencode/opencode.json ~/.config/opencode/opencode.json.bak
+        opencode
+        ```
+      </Accordion>
+      
+      <Accordion title="Permission errors">
+        ```bash
+        # Fix permissions
+        chmod -R u+rwX ~/.local/share/opencode
+        chmod -R u+rwX ~/.config/opencode
+        ```
+      </Accordion>
+    </AccordionGroup>
+  </Accordion>
+  
+  <Accordion title="Symptom: Blank screen or frozen UI" icon="hourglass">
+    **Symptoms:** TUI starts but shows nothing or freezes.
+    
+    **Quick fixes:**
+    
+    1. **Force redraw:**
+       - Press `Ctrl+L` to redraw screen
+    
+    2. **Check terminal compatibility:**
+       ```bash
+       echo $TERM
+       # Should be: xterm-256color, screen-256color, or similar
+       ```
+       
+       If not, set it:
+       ```bash
+       export TERM=xterm-256color
+       opencode
+       ```
+    
+    3. **Try different terminal:**
+       - macOS: iTerm2, Alacritty, or native Terminal.app
+       - Linux: gnome-terminal, konsole, alacritty
+       - Windows: Windows Terminal, not Command Prompt
+  </Accordion>
+</AccordionGroup>
+
+### Authentication Issues
+
+<AccordionGroup>
+  <Accordion title="Cannot connect to provider" icon="plug">
+    **Error:**
+    ```
+    ProviderAuthError: Failed to authenticate with openai
+    ```
+    
+    **Solutions:**
+    
+    <Steps>
+      <Step title="Verify API key">
+        ```bash
+        # Check key is set
+        cat ~/.local/share/opencode/auth.json | jq '.openai'
+        
+        # Test key directly
+        curl https://api.openai.com/v1/models \
+          -H "Authorization: Bearer YOUR_KEY"
+        ```
+      </Step>
+      
+      <Step title="Re-authenticate">
+        ```bash
+        # In OpenCode TUI
+        /connect
+        
+        # Or via API
+        curl -X PUT http://localhost:4096/auth/openai \
+          -H "Content-Type: application/json" \
+          -d '{"apiKey": "sk-..."}'
+        ```
+      </Step>
+      
+      <Step title="Check network connectivity">
+        ```bash
+        # Test provider API access
+        curl -I https://api.openai.com
+        curl -I https://api.anthropic.com
+        ```
+        
+        If these fail, check proxy settings (see [Network Configuration](/network)).
+      </Step>
+    </Steps>
+  </Accordion>
+  
+  <Accordion title="API key works elsewhere but not in OpenCode" icon="key">
+    **Cause:** Key format issue or whitespace.
+    
+    **Fix:**
+    
+    ```bash
+    # Remove auth.json and re-add
+    rm ~/.local/share/opencode/auth.json
+    opencode
+    # Use /connect command
+    ```
+    
+    **Ensure no leading/trailing whitespace:**
+    ```bash
+    # Wrong:
+    "apiKey": " sk-abc123 "
+    
+    # Correct:
+    "apiKey": "sk-abc123"
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Model Errors
+
+<AccordionGroup>
+  <Accordion title="ProviderModelNotFoundError" icon="magnifying-glass">
+    **Error:**
+    ```
+    ProviderModelNotFoundError: Model "gpt-4" not found
+    ```
+    
+    **Cause:** Incorrect model reference format.
+    
+    **Solution:**
+    
+    Models must be referenced as `<providerID>/<modelID>`:
+    
+    <CodeGroup>
+    ```json Correct
+    {
+      "model": "openai/gpt-4.1"
+    }
+    ```
+    
+    ```json Wrong
+    {
+      "model": "gpt-4"  // Missing provider
+    }
+    ```
+    </CodeGroup>
+    
+    **List available models:**
+    ```bash
+    opencode models
+    
+    # Or via API
+    curl http://localhost:4096/provider
+    ```
+    
+    **Common model IDs:**
+    - `openai/gpt-4.1`
+    - `openai/gpt-4.1-mini`
+    - `anthropic/claude-4.5-sonnet`
+    - `openrouter/google/gemini-2.5-flash`
+  </Accordion>
+  
+  <Accordion title="Model not available" icon="ban">
+    **Error:**
+    ```
+    Model "openai/gpt-4" requires higher tier access
+    ```
+    
+    **Causes:**
+    1. Model requires paid subscription
+    2. Account doesn't have access
+    3. Model deprecated/renamed
+    
+    **Check access:**
+    ```bash
+    # List models you have access to
+    curl https://api.openai.com/v1/models \
+      -H "Authorization: Bearer $OPENAI_API_KEY" | jq '.data[].id'
+    ```
+    
+    **Fallback to available model:**
+    ```json opencode.json
+    {
+      "model": "openai/gpt-4.1-mini"  // Free tier alternative
+    }
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### Provider Package Issues
+
+<Accordion title="AI_APICallError: Outdated provider packages" icon="box">
+  **Symptoms:**
+  - API errors mentioning unknown parameters
+  - "Unexpected field" errors
+  - Sudden failures after provider API updates
+  
+  **Cause:** Cached provider packages (OpenAI SDK, Anthropic SDK, etc.) are outdated.
+  
+  **Solution:**
+  
+  <Steps>
+    <Step title="Clear provider cache">
+      <Tabs>
+        <Tab title="macOS/Linux">
+          ```bash
+          rm -rf ~/.cache/opencode
+          ```
+        </Tab>
+        
+        <Tab title="Windows">
+          ```powershell
+          Remove-Item -Recurse -Force $env:USERPROFILE\.cache\opencode
+          ```
+        </Tab>
+      </Tabs>
+    </Step>
+    
+    <Step title="Restart OpenCode">
+      ```bash
+      opencode
+      ```
+      
+      OpenCode will automatically download the latest provider packages.
+    </Step>
+    
+    <Step title="Verify fix">
+      Check logs for successful package installation:
+      ```bash
+      tail -f ~/.local/share/opencode/log/*.log | grep -i "installed"
+      ```
+    </Step>
+  </Steps>
+  
+  <Note>
+  Provider packages are cached in `~/.cache/opencode` to speed up startup. Clear this if you encounter API compatibility issues.
+  </Note>
+</Accordion>
+
+### Configuration Issues
+
+<AccordionGroup>
+  <Accordion title="ProviderInitError" icon="triangle-exclamation">
+    **Error:**
+    ```
+    ProviderInitError: Failed to initialize provider "openai"
+    ```
+    
+    **Cause:** Corrupted or invalid configuration.
+    
+    **Fix:**
+    
+    <Steps>
+      <Step title="Validate config syntax">
+        ```bash
+        # Check for JSON errors
+        cat ~/.config/opencode/opencode.json | jq .
+        # Should output formatted JSON
+        ```
+      </Step>
+      
+      <Step title="Reset config">
+        ```bash
+        # Backup
+        cp ~/.config/opencode/opencode.json{,.bak}
+        
+        # Reset to minimal config
+        cat > ~/.config/opencode/opencode.json <<EOF
+        {
+          "$schema": "https://opncd.ai/config.json"
+        }
+        EOF
+        ```
+      </Step>
+      
+      <Step title="Clear cached data">
+        ```bash
+        rm -rf ~/.local/share/opencode
+        ```
+        
+        <Warning>
+        This deletes all sessions and history. Backup first if needed.
+        </Warning>
+      </Step>
+      
+      <Step title="Re-authenticate">
+        ```bash
+        opencode
+        # Run /connect command
+        ```
+      </Step>
+    </Steps>
+  </Accordion>
+  
+  <Accordion title="Config changes not taking effect" icon="arrows-rotate">
+    **Cause:** Config cached or syntax error preventing reload.
+    
+    **Solutions:**
+    
+    1. **Restart OpenCode:**
+       ```bash
+       # Kill existing instance
+       pkill -f opencode
+       
+       # Start fresh
+       opencode
+       ```
+    
+    2. **Verify config location:**
+       ```bash
+       # Check which config is loaded
+       opencode --print-logs 2>&1 | grep -i config
+       ```
+       
+       Config priority:
+       1. `.opencode/opencode.json` (project-specific)
+       2. `~/.config/opencode/opencode.json` (user-specific)
+    
+    3. **Validate syntax:**
+       ```bash
+       # Must be valid JSON (no comments unless .jsonc)
+       cat ~/.config/opencode/opencode.json | jq .
+       ```
+  </Accordion>
+</AccordionGroup>
+
+### Desktop App Issues
+
+<AccordionGroup>
+  <Accordion title="App won't launch" icon="desktop">
+    **Quick checks:**
+    
+    1. **Fully quit and relaunch:**
+       - macOS: Cmd+Q, then reopen
+       - Windows: Right-click tray icon → Exit, then reopen
+    
+    2. **Check for error dialog:**
+       - Click "Restart" button if shown
+       - Copy error details for debugging
+    
+    3. **macOS only - Reload webview:**
+       - Menu: OpenCode → Reload Webview
+       - Helps if UI is blank/frozen
+  </Accordion>
+  
+  <Accordion title="Connection failed" icon="link-slash">
+    **Symptoms:** "Connection Failed" dialog on launch.
+    
+    **Causes:**
+    1. Custom server URL is unreachable
+    2. Port conflict preventing local server start
+    3. Firewall blocking connection
+    
+    **Solutions:**
+    
+    <Steps>
+      <Step title="Clear custom server URL">
+        From Home screen:
+        1. Click server name (with status dot)
+        2. Click "Clear" in Default server section
+        3. Restart app
+      </Step>
+      
+      <Step title="Remove server config">
+        Edit `~/.config/opencode/opencode.json`, remove:
+        ```json
+        {
+          "server": {
+            "port": 4096,
+            "hostname": "..."
+          }
+        }
+        ```
+      </Step>
+      
+      <Step title="Check environment variables">
+        ```bash
+        # Unset if present
+        unset OPENCODE_PORT
+        unset OPENCODE_HOSTNAME
+        ```
+      </Step>
+    </Steps>
+  </Accordion>
+  
+  <Accordion title="Plugin causing crashes" icon="plug">
+    **Symptoms:** App crashes on launch after installing plugin.
+    
+    **Fix: Disable plugins**
+    
+    <Steps>
+      <Step title="Edit global config">
+        Open:
+        - macOS/Linux: `~/.config/opencode/opencode.jsonc`
+        - Windows: `%USERPROFILE%\.config\opencode\opencode.jsonc`
+        
+        Set:
+        ```jsonc
+        {
+          "plugin": []  // Empty array disables all
+        }
+        ```
+      </Step>
+      
+      <Step title="Move plugin files">
+        Rename plugin directories:
+        ```bash
+        # Global plugins
+        mv ~/.config/opencode/plugins ~/.config/opencode/plugins.disabled
+        
+        # Project plugins
+        mv .opencode/plugins .opencode/plugins.disabled
+        ```
+      </Step>
+      
+      <Step title="Restart and re-enable one by one">
+        Once app works, re-enable plugins individually to find the culprit.
+      </Step>
+    </Steps>
+  </Accordion>
+  
+  <Accordion title="Clear app cache" icon="trash">
+    **When:** App behaves strangely, plugin install stuck.
+    
+    <Tabs>
+      <Tab title="macOS">
+        ```bash
+        # Quit app first
+        rm -rf ~/Library/Caches/ai.opencode.*
+        rm -rf ~/.cache/opencode
+        ```
+      </Tab>
+      
+      <Tab title="Linux">
+        ```bash
+        # Quit app first
+        rm -rf ~/.cache/opencode
+        ```
+      </Tab>
+      
+      <Tab title="Windows">
+        Press `WIN+R`, paste:
+        ```
+        %USERPROFILE%\.cache\opencode
+        ```
+        Delete the folder, then restart app.
+      </Tab>
+    </Tabs>
+  </Accordion>
+  
+  <Accordion title="Notifications not showing" icon="bell">
+    **Requirements:**
+    - Notifications enabled in OS settings for OpenCode
+    - App window **not focused** (notifications only show when backgrounded)
+    
+    **Enable notifications:**
+    
+    <Tabs>
+      <Tab title="macOS">
+        System Settings → Notifications → OpenCode → Allow Notifications ✓
+      </Tab>
+      
+      <Tab title="Windows">
+        Settings → System → Notifications → OpenCode → On
+      </Tab>
+      
+      <Tab title="Linux">
+        Varies by desktop environment. Usually in Settings → Notifications.
+      </Tab>
+    </Tabs>
+  </Accordion>
+</AccordionGroup>
+
+### Linux-Specific Issues
+
+<AccordionGroup>
+  <Accordion title="Copy/paste not working" icon="clipboard">
+    **Cause:** Missing clipboard utilities.
+    
+    **Solution: Install clipboard tools**
+    
+    <Tabs>
+      <Tab title="X11 (most common)">
+        ```bash
+        # Debian/Ubuntu
+        sudo apt install -y xclip
+        
+        # Or alternative
+        sudo apt install -y xsel
+        
+        # RHEL/CentOS
+        sudo yum install -y xclip
+        ```
+      </Tab>
+      
+      <Tab title="Wayland">
+        ```bash
+        # Debian/Ubuntu
+        sudo apt install -y wl-clipboard
+        
+        # Fedora
+        sudo dnf install -y wl-clipboard
+        ```
+      </Tab>
+      
+      <Tab title="Headless (SSH/Docker)">
+        ```bash
+        # Install virtual display
+        sudo apt install -y xvfb
+        
+        # Start virtual display
+        Xvfb :99 -screen 0 1024x768x24 > /dev/null 2>&1 &
+        export DISPLAY=:99.0
+        
+        # Now install xclip
+        sudo apt install -y xclip
+        ```
+      </Tab>
+    </Tabs>
+    
+    **Verify fix:**
+    ```bash
+    echo "test" | xclip -selection clipboard
+    xclip -selection clipboard -o
+    # Should output: test
+    ```
+  </Accordion>
+  
+  <Accordion title="Wayland compositor issues" icon="display">
+    **Symptoms:** Blank window, crashes on Linux with Wayland.
+    
+    **Try Wayland flag:**
+    ```bash
+    OC_ALLOW_WAYLAND=1 opencode
+    ```
+    
+    **If worse, use X11 session:**
+    1. Log out
+    2. At login screen, select "Ubuntu on Xorg" or "GNOME on Xorg"
+    3. Log in and launch OpenCode
+  </Accordion>
+</AccordionGroup>
+
+### Windows-Specific Issues
+
+<AccordionGroup>
+  <Accordion title="WebView2 missing" icon="window-restore">
+    **Error:** App opens to blank window (Windows only).
+    
+    **Cause:** Microsoft Edge WebView2 Runtime not installed.
+    
+    **Solution:**
+    
+    <Steps>
+      <Step title="Download WebView2 Runtime">
+        [Download from Microsoft](https://go.microsoft.com/fwlink/p/?LinkId=2124703)
+      </Step>
+      
+      <Step title="Install the downloaded MSI">
+        Run the installer and follow prompts.
+      </Step>
+      
+      <Step title="Restart OpenCode Desktop">
+        Should now display correctly.
+      </Step>
+    </Steps>
+  </Accordion>
+  
+  <Accordion title="Performance issues" icon="gauge">
+    **Symptoms:** Slow file operations, laggy terminal, high CPU.
+    
+    **Recommended: Use WSL**
+    
+    See [Windows WSL Guide](/windows-wsl) for optimal Windows setup.
+    
+    WSL provides:
+    - 10-20x faster file I/O
+    - Better terminal support
+    - Native Linux tool compatibility
+  </Accordion>
+</AccordionGroup>
+
+## Advanced Debugging
+
+### Enable Debug Logging
+
+```bash
+# Maximum verbosity
+export DEBUG="*"
+export LOG_LEVEL="debug"
+opencode --log-level DEBUG --print-logs
+```
+
+### Inspect Database
+
+OpenCode uses SQLite for storage:
+
+```bash
+# List databases
+find ~/.local/share/opencode -name "*.db"
+
+# Open database
+sqlite3 ~/.local/share/opencode/project/<slug>/storage/session.db
+
+# Useful queries
+SELECT * FROM session ORDER BY updated_at DESC LIMIT 5;
+SELECT COUNT(*) FROM message;
+PRAGMA table_info(session);
+```
+
+### Network Debugging
+
+```bash
+# Trace HTTP requests
+export DEBUG="http*"
+opencode
+
+# Test proxy connectivity
+curl -x $HTTPS_PROXY https://api.openai.com/v1/models
+
+# Check certificate issues
+openssl s_client -connect api.openai.com:443 -showcerts
+```
+
+### Profile Performance
+
+```bash
+# CPU profiling (Bun runtime)
+bun --inspect opencode
+
+# Memory usage
+top -p $(pgrep -f opencode)
+
+# Disk I/O
+iotop -p $(pgrep -f opencode)
+```
+
+## Reset Everything (Last Resort)
+
+<Warning>
+**This deletes all OpenCode data including sessions, history, and configuration.**
+
+Backup important sessions before proceeding.
+</Warning>
+
+<Tabs>
+  <Tab title="macOS/Linux">
+    ```bash
+    # Backup (optional)
+    tar -czf ~/opencode-backup-$(date +%Y%m%d).tar.gz \
+      ~/.local/share/opencode \
+      ~/.config/opencode \
+      ~/.cache/opencode
+    
+    # Delete all data
+    rm -rf ~/.local/share/opencode
+    rm -rf ~/.config/opencode
+    rm -rf ~/.cache/opencode
+    
+    # Reinstall
+    curl -fsSL https://opencode.ai/install | bash
+    
+    # Start fresh
+    opencode
+    ```
+  </Tab>
+  
+  <Tab title="Windows">
+    ```powershell
+    # Backup (optional)
+    Compress-Archive -Path "$env:USERPROFILE\.local\share\opencode","$env:USERPROFILE\.config\opencode","$env:USERPROFILE\.cache\opencode" -DestinationPath "$env:USERPROFILE\opencode-backup-$(Get-Date -Format 'yyyyMMdd').zip"
+    
+    # Delete all data
+    Remove-Item -Recurse -Force "$env:USERPROFILE\.local\share\opencode"
+    Remove-Item -Recurse -Force "$env:USERPROFILE\.config\opencode"
+    Remove-Item -Recurse -Force "$env:USERPROFILE\.cache\opencode"
+    
+    # Reinstall
+    irm https://opencode.ai/install.ps1 | iex
+    
+    # Start fresh
+    opencode
+    ```
+  </Tab>
+</Tabs>
+
+## Getting Help
+
+<CardGroup cols={2}>
+  <Card title="GitHub Issues" icon="github" href="https://github.com/anomalyco/opencode/issues">
+    Report bugs and request features. Search existing issues first.
+  </Card>
+  
+  <Card title="Discord Community" icon="discord" href="https://opencode.ai/discord">
+    Real-time help from the community and maintainers.
+  </Card>
+  
+  <Card title="Documentation" icon="book" href="https://opencode.ai/docs">
+    Comprehensive guides and API references.
+  </Card>
+  
+  <Card title="Enterprise Support" icon="headset" href="/enterprise">
+    Priority support for enterprise customers.
+  </Card>
+</CardGroup>
+
+### When Reporting Issues
+
+Include this information:
+
+<AccordionGroup>
+  <Accordion title="System Information">
+    ```bash
+    # Copy output of:
+    opencode --version
+    uname -a  # or ver on Windows
+    node --version
+    echo $SHELL
+    ```
+  </Accordion>
+  
+  <Accordion title="Error Logs">
+    ```bash
+    # Include relevant log excerpts
+    tail -100 ~/.local/share/opencode/log/*.log
+    ```
+    
+    Redact sensitive info (API keys, file paths).
+  </Accordion>
+  
+  <Accordion title="Configuration">
+    ```bash
+    # Share config (redact secrets)
+    cat ~/.config/opencode/opencode.json
+    ```
+  </Accordion>
+  
+  <Accordion title="Reproduction Steps">
+    1. Step-by-step instructions to reproduce
+    2. Expected behavior
+    3. Actual behavior
+    4. Screenshots/screencasts if applicable
+  </Accordion>
+</AccordionGroup>
+
+## Preventive Measures
+
+<CardGroup cols={2}>
+  <Card title="Keep Updated" icon="arrow-up">
+    ```bash
+    opencode upgrade
+    ```
+    Run monthly to get latest fixes.
+  </Card>
+  
+  <Card title="Backup Sessions" icon="floppy-disk">
+    ```bash
+    # Periodic backups
+    tar -czf ~/opencode-backup.tar.gz ~/.local/share/opencode/project
+    ```
+  </Card>
+  
+  <Card title="Monitor Logs" icon="file-lines">
+    Check logs after updates:
+    ```bash
+    tail -f ~/.local/share/opencode/log/*.log
+    ```
+  </Card>
+  
+  <Card title="Test Config Changes" icon="flask">
+    Test config in isolated session:
+    ```bash
+    opencode --config /tmp/test-config.json
+    ```
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Server Configuration" icon="server" href="/server">
+    Advanced server setup and debugging.
+  </Card>
+  
+  <Card title="Network Setup" icon="network-wired" href="/network">
+    Resolve proxy and certificate issues.
+  </Card>
+  
+  <Card title="Windows WSL" icon="windows" href="/windows-wsl">
+    Fix Windows-specific performance issues.
+  </Card>
+</CardGroup>

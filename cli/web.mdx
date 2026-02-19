@@ -1,0 +1,228 @@
+---
+title: "web"
+description: "Start OpenCode server with web interface"
+---
+
+## Overview
+
+The `web` command starts an HTTP server and automatically opens a web browser to access OpenCode through a web interface. This provides:
+
+- Browser-based UI for OpenCode
+- Access from any device on your network
+- Shareable link for team collaboration
+- Same functionality as the TUI
+
+## Usage
+
+```bash
+opencode web
+```
+
+The command will:
+1. Start the OpenCode server
+2. Display local and network access URLs
+3. Automatically open your default browser
+
+## Options
+
+<ParamField path="--port" type="number" default="0">
+  Port to listen on. Default is `0` (random available port).
+</ParamField>
+
+<ParamField path="--hostname" type="string" default="127.0.0.1">
+  Hostname to listen on. Use `0.0.0.0` to allow external connections.
+</ParamField>
+
+<ParamField path="--mdns" type="boolean" default="false">
+  Enable mDNS service discovery. When enabled, defaults hostname to `0.0.0.0`.
+</ParamField>
+
+<ParamField path="--mdns-domain" type="string" default="opencode.local">
+  Custom domain name for mDNS service.
+</ParamField>
+
+<ParamField path="--cors" type="string[]" default="[]">
+  Additional browser origins to allow for CORS. Can be specified multiple times.
+</ParamField>
+
+## Examples
+
+### Local Access Only
+
+Start web interface on localhost:
+
+```bash
+opencode web
+```
+
+Output:
+```
+  Local access:      http://localhost:3456
+```
+
+### Network-Wide Access
+
+Allow connections from other devices on your network:
+
+```bash
+opencode web --hostname 0.0.0.0 --port 4096
+```
+
+Output:
+```
+  Local access:      http://localhost:4096
+  Network access:    http://192.168.1.100:4096
+```
+
+Share the network URL with teammates to collaborate.
+
+### With mDNS Discovery
+
+Make the server discoverable via mDNS:
+
+```bash
+opencode web --mdns
+```
+
+Output:
+```
+  Local access:      http://localhost:3456
+  Network access:    http://192.168.1.100:3456
+  mDNS:              opencode.local:3456
+```
+
+### Custom Domain and Port
+
+```bash
+opencode web --mdns --mdns-domain myproject.local --port 8080
+```
+
+## Authentication
+
+<Warning>
+  When exposing the web interface to your network, always enable authentication to prevent unauthorized access.
+</Warning>
+
+Enable HTTP basic authentication:
+
+```bash
+export OPENCODE_SERVER_PASSWORD="your-secure-password"
+opencode web --hostname 0.0.0.0
+```
+
+The browser will prompt for credentials:
+- **Username**: `opencode` (or set `OPENCODE_SERVER_USERNAME`)
+- **Password**: Value of `OPENCODE_SERVER_PASSWORD`
+
+## Network Access Patterns
+
+When you start with `--hostname 0.0.0.0`, OpenCode displays multiple access URLs:
+
+### Local Access
+Use `http://localhost:<port>` from the same machine.
+
+### Network Access
+OpenCode automatically detects your local network IPs (excluding Docker bridges and IPv6). Share these URLs with others on your network:
+
+```
+Network access:    http://192.168.1.100:4096
+Network access:    http://10.0.0.50:4096
+```
+
+### mDNS Access
+If mDNS is enabled, use the friendly domain name:
+
+```
+mDNS:              opencode.local:4096
+```
+
+## Mobile and Remote Access
+
+The web interface works on mobile devices:
+
+1. Start the server with network access:
+   ```bash
+   opencode web --hostname 0.0.0.0 --port 4096
+   ```
+
+2. On your mobile device, navigate to the network URL:
+   ```
+   http://192.168.1.100:4096
+   ```
+
+3. Add to home screen for app-like experience
+
+## Configuration
+
+Set default web server options in your global configuration (`~/.config/opencode/config.json`):
+
+```json
+{
+  "server": {
+    "port": 4096,
+    "hostname": "0.0.0.0",
+    "mdns": true,
+    "mdnsDomain": "myproject.local",
+    "cors": []
+  }
+}
+```
+
+## Differences from Serve
+
+The `web` command is similar to [`serve`](/cli/serve) but:
+
+- Automatically opens a browser
+- Shows formatted access URLs with visual styling
+- Displays both local and network addresses when using `0.0.0.0`
+- Filters out Docker bridge networks for cleaner output
+
+Both commands expose the same HTTP API.
+
+## Security Considerations
+
+<Warning>
+  Never expose an unauthenticated server to the internet. Use authentication and firewall rules.
+</Warning>
+
+- **Always** set `OPENCODE_SERVER_PASSWORD` for network access
+- Use firewall rules to restrict access to trusted networks
+- Consider using a reverse proxy with TLS for production
+- Don't use Docker bridge IPs (filtered automatically)
+
+## Troubleshooting
+
+### Browser Doesn't Open
+
+The command may fail to open the browser automatically in some environments (SSH sessions, headless servers, etc.). Simply copy the URL from the output and paste it into your browser.
+
+### Can't Connect from Other Devices
+
+1. Verify you used `--hostname 0.0.0.0`
+2. Check firewall rules allow the port
+3. Ensure devices are on the same network
+4. Try the IP address instead of `localhost`
+
+### mDNS Not Working
+
+1. Ensure mDNS/Bonjour is installed on your system
+2. Check that port 5353 (UDP) is not blocked
+3. Verify both devices support mDNS
+4. Try using the IP address as a fallback
+
+## Related Commands
+
+<CardGroup cols={2}>
+  <Card title="serve" icon="server" href="/cli/serve">
+    Start headless server without browser
+  </Card>
+  <Card title="attach" icon="link" href="/cli/attach">
+    Attach TUI to running web server
+  </Card>
+  <Card title="Network Configuration" icon="network-wired" href="/network">
+    Learn more about network setup
+  </Card>
+  <Card title="Server API" icon="code" href="/server">
+    View full HTTP API documentation
+  </Card>
+</CardGroup>

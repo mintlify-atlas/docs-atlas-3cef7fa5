@@ -1,0 +1,590 @@
+---
+title: Permissions
+description: Control what actions agents can take with the permission system.
+---
+
+OpenCode's permission system gives you fine-grained control over what actions agents can perform. You can configure permissions globally, per-agent, or for specific operations like bash commands and file edits.
+
+---
+
+## Overview
+
+The permission system allows you to:
+
+- Control whether agents can edit files, run bash commands, or fetch web content
+- Set different permission levels: `allow`, `ask`, or `deny`
+- Configure permissions globally or override them per-agent
+- Use pattern matching for specific commands or file paths
+- Get prompted for approval before potentially dangerous operations
+
+<Tip>
+The Plan agent uses `ask` permissions by default for file edits and bash commands, making it perfect for code review and analysis without accidental modifications.
+</Tip>
+
+---
+
+## Permission Levels
+
+There are three permission levels you can configure:
+
+<Accordion title="allow">
+**Allow all operations without approval**
+
+The agent can perform the action freely without prompting you. This is the default for the Build agent.
+
+```json
+{
+  "permission": {
+    "edit": "allow"
+  }
+}
+```
+</Accordion>
+
+<Accordion title="ask">
+**Prompt for approval before running**
+
+The agent will ask for your permission before performing the action. You'll see a prompt with details about what the agent wants to do, and you can:
+- **Once**: Allow this specific operation only
+- **Always**: Allow this and all similar operations in this session
+- **Reject**: Deny the operation
+
+```json
+{
+  "permission": {
+    "edit": "ask"
+  }
+}
+```
+
+This is the default for the Plan agent.
+</Accordion>
+
+<Accordion title="deny">
+**Disable the tool entirely**
+
+The agent cannot perform the action at all. The tool will be completely unavailable.
+
+```json
+{
+  "permission": {
+    "edit": "deny"
+  }
+}
+```
+</Accordion>
+
+---
+
+## Configurable Permissions
+
+You can configure permissions for these tools:
+
+### Edit Permissions
+
+Control file modifications including `edit`, `write`, `patch`, and `multiedit` tools.
+
+```json title="opencode.json"
+{
+  "permission": {
+    "edit": "ask"
+  }
+}
+```
+
+**What this controls**:
+- Creating new files (`write` tool)
+- Modifying existing files (`edit` and `multiedit` tools)
+- Applying patches (`patch` tool)
+
+### Bash Permissions
+
+Control shell command execution.
+
+```json title="opencode.json"
+{
+  "permission": {
+    "bash": "ask"
+  }
+}
+```
+
+**What this controls**:
+- All bash/shell commands
+- Git operations
+- Package manager commands (npm, pip, etc.)
+- Build and test commands
+- System operations
+
+You can also configure specific command patterns (see [Pattern Matching](#pattern-matching) below).
+
+### WebFetch Permissions
+
+Control web content fetching.
+
+```json title="opencode.json"
+{
+  "permission": {
+    "webfetch": "ask"
+  }
+}
+```
+
+**What this controls**:
+- Fetching content from URLs
+- Accessing external web resources
+
+---
+
+## Pattern Matching
+
+You can use glob patterns to set permissions for specific commands or paths. This is especially powerful for bash commands.
+
+### Basic Bash Command Patterns
+
+Allow specific commands while asking for others:
+
+```json title="opencode.json"
+{
+  "permission": {
+    "bash": {
+      "*": "ask",
+      "git status": "allow",
+      "git log*": "allow",
+      "git diff*": "allow"
+    }
+  }
+}
+```
+
+In this configuration:
+- Most commands require approval (`"*": "ask"`)
+- `git status` is always allowed
+- Any command starting with `git log` is allowed
+- Any command starting with `git diff` is allowed
+
+<Note>
+Rules are evaluated in order, and the **last matching rule wins**. Always put the wildcard `*` rule first, then more specific rules after.
+</Note>
+
+### Deny Dangerous Commands
+
+Prevent potentially dangerous operations:
+
+```json title="opencode.json"
+{
+  "permission": {
+    "bash": {
+      "*": "allow",
+      "rm -rf*": "deny",
+      "git push --force*": "deny",
+      "npm publish": "ask"
+    }
+  }
+}
+```
+
+### Read-Only Git Access
+
+Allow read-only git commands but ask for modifications:
+
+```json title="opencode.json"
+{
+  "permission": {
+    "bash": {
+      "*": "ask",
+      "git status": "allow",
+      "git log*": "allow",
+      "git diff*": "allow",
+      "git show*": "allow",
+      "git branch": "allow",
+      "git push*": "deny",
+      "git commit*": "ask"
+    }
+  }
+}
+```
+
+---
+
+## Global Configuration
+
+Set default permissions for all agents in your `opencode.json`:
+
+```json title="opencode.json"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "edit": "ask",
+    "bash": {
+      "*": "ask",
+      "git status": "allow",
+      "git diff*": "allow"
+    },
+    "webfetch": "allow"
+  }
+}
+```
+
+---
+
+## Per-Agent Configuration
+
+Override global permissions for specific agents:
+
+```json title="opencode.json"
+{
+  "$schema": "https://opencode.ai/config.json",
+  "permission": {
+    "edit": "ask",
+    "bash": "ask"
+  },
+  "agent": {
+    "build": {
+      "permission": {
+        "edit": "allow",
+        "bash": "allow"
+      }
+    },
+    "plan": {
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "*": "deny",
+          "git status": "allow",
+          "git diff*": "allow"
+        }
+      }
+    }
+  }
+}
+```
+
+In this example:
+- **Build agent**: Full access to edits and bash
+- **Plan agent**: Cannot edit files, can only run safe git commands
+
+---
+
+## Markdown Agent Configuration
+
+You can also set permissions in markdown agent definitions:
+
+```markdown title="~/.config/opencode/agents/review.md"
+---
+description: Code review without edits
+mode: subagent
+permission:
+  edit: deny
+  bash:
+    "*": ask
+    "git diff": allow
+    "git log*": allow
+    "grep *": allow
+  webfetch: deny
+---
+
+You are a code reviewer. Analyze code and suggest improvements without making changes.
+```
+
+---
+
+## Real-World Examples
+
+### Safe Development Agent
+
+An agent that requires approval for potentially dangerous operations:
+
+```json title="opencode.json"
+{
+  "agent": {
+    "safe-dev": {
+      "description": "Development agent with safety checks",
+      "mode": "primary",
+      "permission": {
+        "edit": "allow",
+        "bash": {
+          "*": "allow",
+          "rm *": "ask",
+          "git push*": "ask",
+          "npm publish": "ask",
+          "docker rm*": "ask"
+        }
+      }
+    }
+  }
+}
+```
+
+### Read-Only Analysis Agent
+
+An agent that can only read and analyze, not modify:
+
+```json title="opencode.json"
+{
+  "agent": {
+    "analyzer": {
+      "description": "Analyze code without modifications",
+      "mode": "subagent",
+      "permission": {
+        "edit": "deny",
+        "bash": {
+          "*": "deny",
+          "git status": "allow",
+          "git log*": "allow",
+          "git diff*": "allow",
+          "grep *": "allow",
+          "find *": "allow"
+        },
+        "webfetch": "allow"
+      }
+    }
+  }
+}
+```
+
+### Documentation Writer Agent
+
+An agent that can edit docs but not run commands:
+
+```json title="opencode.json"
+{
+  "agent": {
+    "docs-writer": {
+      "description": "Write and update documentation",
+      "mode": "subagent",
+      "permission": {
+        "edit": "allow",
+        "bash": "deny",
+        "webfetch": "allow"
+      },
+      "tools": {
+        "read": true,
+        "write": true,
+        "edit": true,
+        "grep": true,
+        "glob": true
+      }
+    }
+  }
+}
+```
+
+### Testing Agent
+
+An agent optimized for running and fixing tests:
+
+```json title="opencode.json"
+{
+  "agent": {
+    "test-runner": {
+      "description": "Run tests and fix failures",
+      "mode": "subagent",
+      "permission": {
+        "edit": "allow",
+        "bash": {
+          "*": "ask",
+          "npm test*": "allow",
+          "npm run test*": "allow",
+          "pytest*": "allow",
+          "jest*": "allow",
+          "vitest*": "allow",
+          "git status": "allow",
+          "git diff": "allow"
+        }
+      }
+    }
+  }
+}
+```
+
+---
+
+## Task Permissions
+
+Control which subagents an agent can invoke via the Task tool:
+
+```json title="opencode.json"
+{
+  "agent": {
+    "orchestrator": {
+      "mode": "primary",
+      "permission": {
+        "task": {
+          "*": "deny",
+          "orchestrator-*": "allow",
+          "code-reviewer": "ask"
+        }
+      }
+    }
+  }
+}
+```
+
+In this configuration:
+- By default, no subagents can be invoked (`"*": "deny"`)
+- Subagents matching `orchestrator-*` pattern can be invoked freely
+- The `code-reviewer` subagent requires approval
+
+<Note>
+When set to `deny`, the subagent is removed from the Task tool description entirely, so the model won't attempt to invoke it.
+</Note>
+
+<Tip>
+Users can always invoke any subagent directly via the `@` autocomplete menu, even if the agent's task permissions would deny it.
+</Tip>
+
+---
+
+## Permission Prompts
+
+When a permission is set to `ask`, you'll see a prompt with details about what the agent wants to do. You have three options:
+
+### Once
+
+Allow this specific operation only. The next time a similar operation is attempted, you'll be asked again.
+
+### Always
+
+Allow this operation and all similar operations for the rest of the session. The permission will be remembered and you won't be prompted again for matching operations.
+
+For example, if you choose "Always" for `git status`, all future `git status` commands in that session will be allowed automatically.
+
+### Reject
+
+Deny the operation. The agent will receive an error and can try again with different parameters or approach the task differently.
+
+You can optionally provide a message explaining why you rejected the operation, which helps the agent understand what to do instead.
+
+---
+
+## Best Practices
+
+<Tip>
+**Use the Plan agent for reviews**: The Plan agent has `ask` permissions by default, making it perfect for code analysis without accidental changes.
+</Tip>
+
+<Tip>
+**Start restrictive, then relax**: Begin with `ask` for most operations, then use "Always" during the session for operations you trust.
+</Tip>
+
+<Tip>
+**Use patterns for git safety**: Allow read-only git commands but require approval for push, rebase, and other modifying operations.
+</Tip>
+
+<Tip>
+**Create specialized agents**: Use per-agent permissions to create focused agents (e.g., docs-only, test-only, read-only) for specific workflows.
+</Tip>
+
+<Tip>
+**Wildcard rules first**: When using pattern matching, put the wildcard `*` rule first, then more specific rules after. The last matching rule wins.
+</Tip>
+
+---
+
+## Error Handling
+
+When a permission is denied, the agent receives different errors depending on how it was denied:
+
+### Rejected by User
+
+When you click "Reject" on a permission prompt, the agent receives:
+- An error message stating the user rejected the operation
+- Optional feedback message if you provided one
+- The ability to try again with different parameters
+
+### Denied by Configuration
+
+When an operation is denied by a `"deny"` rule in your config, the agent receives:
+- An error indicating the configuration prevents this operation
+- Information about relevant permission rules
+- The inability to retry (the tool is fully disabled)
+
+### Corrected by User
+
+When you reject an operation but provide guidance on what to do instead, the agent receives:
+- Your feedback message
+- The opportunity to continue working with your guidance
+- Context to approach the task differently
+
+---
+
+## Advanced Configuration
+
+### Path-Based Permissions
+
+You can use path patterns in bash permissions:
+
+```json title="opencode.json"
+{
+  "permission": {
+    "bash": {
+      "*": "ask",
+      "rm ~/Downloads/*": "allow",
+      "rm ~/.config/*": "deny"
+    }
+  }
+}
+```
+
+### Home Directory Expansion
+
+Permissions support home directory expansion with `~` and `$HOME`:
+
+```json title="opencode.json"
+{
+  "permission": {
+    "bash": {
+      "rm ~/safe-to-delete/*": "allow",
+      "rm $HOME/important/*": "deny"
+    }
+  }
+}
+```
+
+### Complex Permission Sets
+
+Combine multiple permission types for sophisticated control:
+
+```json title="opencode.json"
+{
+  "agent": {
+    "deploy-agent": {
+      "description": "Handles deployment tasks",
+      "permission": {
+        "edit": {
+          "*": "allow",
+          ".env": "deny",
+          "*.production.*": "ask"
+        },
+        "bash": {
+          "*": "ask",
+          "git status": "allow",
+          "git push origin main": "deny",
+          "npm run build": "allow",
+          "npm run deploy": "ask"
+        },
+        "webfetch": "allow",
+        "task": {
+          "*": "allow",
+          "production-*": "ask"
+        }
+      }
+    }
+  }
+}
+```
+
+---
+
+## Summary
+
+The permission system gives you powerful control over agent behavior:
+
+- **Three levels**: `allow`, `ask`, `deny`
+- **Three tools**: `edit`, `bash`, `webfetch`
+- **Pattern matching**: Use globs for fine-grained control
+- **Global and per-agent**: Configure defaults and override as needed
+- **Task permissions**: Control subagent invocation
+
+Use permissions to create safe, focused agents that match your workflow and risk tolerance.

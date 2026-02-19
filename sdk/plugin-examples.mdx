@@ -1,0 +1,679 @@
+---
+title: 'Plugin Examples'
+description: 'Complete examples of OpenCode plugins'
+---
+
+## Simple Tool Plugin
+
+A minimal plugin with a custom tool:
+
+```typescript
+import { Plugin, tool } from '@opencode-ai/plugin'
+
+export const ExamplePlugin: Plugin = async (ctx) => {
+  return {
+    tool: {
+      mytool: tool({
+        description: 'This is a custom tool',
+        args: {
+          foo: tool.schema.string().describe('foo'),
+        },
+        async execute(args) {
+          return `Hello ${args.foo}!`
+        },
+      }),
+    },
+  }
+}
+```
+
+**File location**: `./plugins/example.ts`
+
+**Configuration**:
+```json
+{
+  "plugin": ["./plugins/example.ts"]
+}
+```
+
+**Usage**: The AI can now call `mytool` with a string argument.
+
+---
+
+## GitHub Integration Plugin
+
+Integrate with GitHub API:
+
+```typescript
+import { Plugin, tool } from '@opencode-ai/plugin'
+import { Octokit } from '@octokit/rest'
+
+export const GitHubPlugin: Plugin = async (ctx) => {
+  const octokit = new Octokit({
+    auth: process.env.GITHUB_TOKEN,
+  })
+  
+  return {
+    tool: {
+      github_search_repos: tool({
+        description: 'Search GitHub repositories by query string. Returns repo name, description, stars, and URL.',
+        args: {
+          query: tool.schema.string().describe('Search query'),
+          language: tool.schema.string().optional().describe('Filter by programming language'),
+          limit: tool.schema.number().min(1).max(100).optional().describe('Max results (default 10)'),
+        },
+        async execute(args, context) {
+          context.metadata({ title: `Searching: ${args.query}` })
+          
+          let q = args.query
+          if (args.language) {
+            q += ` language:${args.language}`
+          }
+          
+          const result = await octokit.search.repos({
+            q,
+            per_page: args.limit ?? 10,
+            sort: 'stars',
+            order: 'desc',
+          })
+          
+          const repos = result.data.items.map(repo => ({
+            name: repo.full_name,
+            description: repo.description,
+            stars: repo.stargazers_count,
+            url: repo.html_url,
+            language: repo.language,
+          }))
+          
+          return JSON.stringify({ count: repos.length, repos }, null, 2)
+        },
+      }),
+      
+      github_create_issue: tool({
+        description: 'Create a GitHub issue in the current repository',
+        args: {
+          title: tool.schema.string().describe('Issue title'),
+          body: tool.schema.string().describe('Issue description'),
+          labels: tool.schema.array(tool.schema.string()).optional().describe('Issue labels'),
+        },
+        async execute(args, context) {
+          // Get repo from git remote
+          const remote = await ctx.$`git remote get-url origin`.text()
+          const match = remote.match(/github\.com[\/:](.+?)\/(.+?)(\.git)?$/)
+          
+          if (!match) {
+            return 'Error: Not a GitHub repository'
+          }
+          
+          const [, owner, repo] = match
+          
+          context.metadata({ title: `Creating issue in ${owner}/${repo}` })
+          
+          const issue = await octokit.issues.create({
+            owner,
+            repo,
+            title: args.title,
+            body: args.body,
+            labels: args.labels,
+          })
+          
+          return JSON.stringify({
+            number: issue.data.number,
+            url: issue.data.html_url,
+          }, null, 2)
+        },
+      }),
+    },
+  }
+}
+```
+
+---
+
+## Database Query Plugin
+
+Query and manage databases:
+
+```typescript
+import { Plugin, tool } from '@opencode-ai/plugin'
+import { Database } from 'bun:sqlite'
+import { join } from 'path'
+
+export const DatabasePlugin: Plugin = async (ctx) => {
+  const dbPath = join(ctx.directory, 'app.db')
+  const db = new Database(dbPath)
+  
+  return {
+    tool: {
+      db_query: tool({
+        description: 'Execute a SQL SELECT query on the application database',
+        args: {
+          query: tool.schema.string().describe('SQL SELECT query'),
+          limit: tool.schema.number().min(1).max(1000).optional().describe('Row limit'),
+        },
+        async execute(args, context) {
+          const query = args.query.trim().toLowerCase()
+          if (!query.startsWith('select')) {
+            return 'Error: Only SELECT queries allowed'
+          }
+          
+          context.metadata({ title: 'Querying database' })
+          
+          try {
+            let sql = args.query
+            if (args.limit && !query.includes('limit')) {
+              sql += ` LIMIT ${args.limit}`
+            }
+            
+            const results = db.query(sql).all()
+            
+            return JSON.stringify({
+              rowCount: results.length,
+              data: results,
+            }, null, 2)
+          } catch (error) {
+            return `Error: ${error.message}`
+          }
+        },
+      }),
+      
+      db_schema: tool({
+        description: 'Get the database schema (tables and columns)',
+        args: {},
+        async execute(args, context) {
+          const tables = db.query(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+          ).all() as { name: string }[]
+          
+          const schema: Record<string, any[]> = {}
+          
+          for (const table of tables) {
+            const columns = db.query(`PRAGMA table_info(${table.name})`).all()
+            schema[table.name] = columns
+          }
+          
+          return JSON.stringify(schema, null, 2)
+        },
+      }),
+      
+      db_stats: tool({
+        description: 'Get database statistics (table sizes, row counts)',
+        args: {},
+        async execute(args, context) {
+          const tables = db.query(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+          ).all() as { name: string }[]
+          
+          const stats = []
+          for (const table of tables) {
+            const count = db.query(`SELECT COUNT(*) as count FROM ${table.name}`)
+              .get() as { count: number }
+            
+            stats.push({
+              table: table.name,
+              rows: count.count,
+            })
+          }
+          
+          return JSON.stringify({ tables: stats.length, stats }, null, 2)
+        },
+      }),
+    },
+  }
+}
+```
+
+---
+
+## Testing Integration Plugin
+
+Run tests and generate coverage:
+
+```typescript
+import { Plugin, tool } from '@opencode-ai/plugin'
+import { join } from 'path'
+
+export const TestingPlugin: Plugin = async (ctx) => {
+  return {
+    tool: {
+      run_tests: tool({
+        description: 'Run test suite for the project. Supports Jest, Vitest, and Bun test.',
+        args: {
+          pattern: tool.schema.string().optional().describe('Test file pattern (e.g., "user.test.ts")'),
+          coverage: tool.schema.boolean().optional().describe('Generate coverage report'),
+        },
+        async execute(args, context) {
+          // Detect test runner
+          const packageJson = await Bun.file(join(ctx.directory, 'package.json')).json()
+          const testCommand = packageJson.scripts?.test
+          
+          if (!testCommand) {
+            return 'Error: No test script found in package.json'
+          }
+          
+          let cmd = 'npm test'
+          if (args.pattern) {
+            cmd += ` -- ${args.pattern}`
+          }
+          if (args.coverage) {
+            cmd += ' --coverage'
+          }
+          
+          context.metadata({ title: 'Running tests' })
+          
+          const result = await ctx.$`${cmd}`.quiet().nothrow()
+          
+          return JSON.stringify({
+            exitCode: result.exitCode,
+            stdout: result.stdout.toString(),
+            stderr: result.stderr.toString(),
+          }, null, 2)
+        },
+      }),
+      
+      analyze_coverage: tool({
+        description: 'Analyze test coverage and find uncovered code',
+        args: {},
+        async execute(args, context) {
+          context.metadata({ title: 'Analyzing coverage' })
+          
+          // Run tests with coverage
+          await ctx.$`npm test -- --coverage`.quiet().nothrow()
+          
+          // Parse coverage report
+          const coverageFile = join(ctx.directory, 'coverage/coverage-summary.json')
+          const coverage = await Bun.file(coverageFile).json()
+          
+          const summary = {
+            statements: coverage.total.statements.pct,
+            branches: coverage.total.branches.pct,
+            functions: coverage.total.functions.pct,
+            lines: coverage.total.lines.pct,
+          }
+          
+          // Find files with low coverage
+          const lowCoverage = Object.entries(coverage)
+            .filter(([path, data]: any) => {
+              return path !== 'total' && data.lines.pct < 80
+            })
+            .map(([path, data]: any) => ({
+              file: path,
+              coverage: data.lines.pct,
+            }))
+            .sort((a, b) => a.coverage - b.coverage)
+          
+          return JSON.stringify({ summary, lowCoverage }, null, 2)
+        },
+      }),
+    },
+  }
+}
+```
+
+---
+
+## Documentation Generator Plugin
+
+Generate and update documentation:
+
+```typescript
+import { Plugin, tool } from '@opencode-ai/plugin'
+import { readFile, writeFile } from 'fs/promises'
+import { join } from 'path'
+import { glob } from 'glob'
+
+export const DocsPlugin: Plugin = async (ctx) => {
+  return {
+    tool: {
+      generate_api_docs: tool({
+        description: 'Generate API documentation from TypeScript source files',
+        args: {
+          pattern: tool.schema.string().describe('File pattern (e.g., "src/**/*.ts")'),
+          output: tool.schema.string().describe('Output file path'),
+        },
+        async execute(args, context) {
+          await context.ask({
+            permission: 'file_write',
+            patterns: [args.output],
+            always: [],
+            metadata: { operation: 'generate_docs' },
+          })
+          
+          context.metadata({ title: 'Scanning source files' })
+          
+          const files = await glob(args.pattern, {
+            cwd: ctx.directory,
+            absolute: true,
+          })
+          
+          const docs: any[] = []
+          
+          for (const file of files) {
+            context.metadata({ title: `Processing ${file}` })
+            
+            const content = await readFile(file, 'utf-8')
+            
+            // Simple parser for exported functions with JSDoc
+            const regex = /\/\*\*([^*]|\*(?!\/))*\*\/\s*export\s+(?:async\s+)?function\s+(\w+)/g
+            let match
+            
+            while ((match = regex.exec(content)) !== null) {
+              const [fullMatch, jsDoc, functionName] = match
+              docs.push({
+                file: file.replace(ctx.directory, ''),
+                name: functionName,
+                docs: jsDoc.trim(),
+              })
+            }
+          }
+          
+          // Generate markdown
+          let markdown = '# API Documentation\n\n'
+          for (const doc of docs) {
+            markdown += `## ${doc.name}\n\n`
+            markdown += `**File**: ${doc.file}\n\n`
+            markdown += `${doc.docs}\n\n`
+          }
+          
+          const outputPath = join(ctx.directory, args.output)
+          await writeFile(outputPath, markdown, 'utf-8')
+          
+          return `Generated documentation for ${docs.length} functions in ${args.output}`
+        },
+      }),
+      
+      update_readme: tool({
+        description: 'Update README.md with project statistics',
+        args: {},
+        async execute(args, context) {
+          const readmePath = join(ctx.directory, 'README.md')
+          
+          await context.ask({
+            permission: 'file_write',
+            patterns: ['README.md'],
+            always: [],
+            metadata: { operation: 'update_readme' },
+          })
+          
+          // Gather stats
+          const files = await glob('src/**/*.ts', { cwd: ctx.directory })
+          const tests = await glob('**/*.test.ts', { cwd: ctx.directory })
+          
+          let totalLines = 0
+          for (const file of files) {
+            const content = await readFile(join(ctx.directory, file), 'utf-8')
+            totalLines += content.split('\n').length
+          }
+          
+          // Update README
+          let readme = await readFile(readmePath, 'utf-8')
+          
+          const stats = `## Project Stats\n\n` +
+            `- Files: ${files.length}\n` +
+            `- Tests: ${tests.length}\n` +
+            `- Lines of code: ${totalLines}\n`
+          
+          // Replace or append stats section
+          if (readme.includes('## Project Stats')) {
+            readme = readme.replace(/## Project Stats[\s\S]*?(?=##|$)/, stats)
+          } else {
+            readme += '\n\n' + stats
+          }
+          
+          await writeFile(readmePath, readme, 'utf-8')
+          
+          return 'Updated README.md with project statistics'
+        },
+      }),
+    },
+  }
+}
+```
+
+---
+
+## Performance Monitoring Plugin
+
+Track and analyze performance:
+
+```typescript
+import { Plugin, tool } from '@opencode-ai/plugin'
+import { Database } from 'bun:sqlite'
+import { join } from 'path'
+
+export const PerformancePlugin: Plugin = async (ctx) => {
+  const dbPath = join(ctx.directory, '.opencode/metrics.db')
+  const db = new Database(dbPath)
+  
+  // Initialize metrics table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS metrics (
+      id INTEGER PRIMARY KEY,
+      timestamp INTEGER,
+      session_id TEXT,
+      message_id TEXT,
+      metric_name TEXT,
+      metric_value REAL,
+      metadata TEXT
+    )
+  `)
+  
+  return {
+    tool: {
+      log_metric: tool({
+        description: 'Log a performance metric',
+        args: {
+          name: tool.schema.string().describe('Metric name'),
+          value: tool.schema.number().describe('Metric value'),
+          metadata: tool.schema.record(tool.schema.string()).optional().describe('Additional metadata'),
+        },
+        async execute(args, context) {
+          db.run(
+            'INSERT INTO metrics (timestamp, session_id, message_id, metric_name, metric_value, metadata) VALUES (?, ?, ?, ?, ?, ?)',
+            Date.now(),
+            context.sessionID,
+            context.messageID,
+            args.name,
+            args.value,
+            JSON.stringify(args.metadata ?? {})
+          )
+          
+          return `Logged metric: ${args.name} = ${args.value}`
+        },
+      }),
+      
+      analyze_metrics: tool({
+        description: 'Analyze performance metrics for a given metric name',
+        args: {
+          name: tool.schema.string().describe('Metric name to analyze'),
+          hours: tool.schema.number().min(1).optional().describe('Hours of history (default 24)'),
+        },
+        async execute(args, context) {
+          const hours = args.hours ?? 24
+          const since = Date.now() - (hours * 60 * 60 * 1000)
+          
+          const metrics = db.query(
+            'SELECT * FROM metrics WHERE metric_name = ? AND timestamp > ? ORDER BY timestamp',
+            args.name,
+            since
+          ).all() as any[]
+          
+          if (metrics.length === 0) {
+            return `No metrics found for "${args.name}" in the last ${hours} hours`
+          }
+          
+          const values = metrics.map(m => m.metric_value)
+          const avg = values.reduce((a, b) => a + b, 0) / values.length
+          const min = Math.min(...values)
+          const max = Math.max(...values)
+          
+          // Simple trend detection
+          const recentAvg = values.slice(-5).reduce((a, b) => a + b, 0) / Math.min(5, values.length)
+          const trend = recentAvg > avg ? 'increasing' : recentAvg < avg ? 'decreasing' : 'stable'
+          
+          return JSON.stringify({
+            metric: args.name,
+            count: metrics.length,
+            average: avg.toFixed(2),
+            min,
+            max,
+            trend,
+            recent: values.slice(-10),
+          }, null, 2)
+        },
+      }),
+    },
+    
+    // Hook to log message completion times
+    'chat.message': async (input, output) => {
+      const { sessionID, messageID } = input
+      const { message } = output
+      
+      if (message.role === 'assistant' && message.time.completed) {
+        const duration = message.time.completed - message.time.created
+        
+        db.run(
+          'INSERT INTO metrics (timestamp, session_id, message_id, metric_name, metric_value, metadata) VALUES (?, ?, ?, ?, ?, ?)',
+          Date.now(),
+          sessionID,
+          messageID,
+          'message_duration',
+          duration,
+          JSON.stringify({ model: message.modelID })
+        )
+      }
+    },
+  }
+}
+```
+
+---
+
+## Multi-Tool Plugin
+
+Combine multiple tools in one plugin:
+
+```typescript
+import { Plugin, tool } from '@opencode-ai/plugin'
+
+export const UtilityPlugin: Plugin = async (ctx) => {
+  return {
+    tool: {
+      // Time utilities
+      format_date: tool({
+        description: 'Format a timestamp into a human-readable date',
+        args: {
+          timestamp: tool.schema.number().describe('Unix timestamp'),
+          format: tool.schema.enum(['short', 'long', 'iso']).describe('Date format'),
+        },
+        async execute(args) {
+          const date = new Date(args.timestamp)
+          switch (args.format) {
+            case 'short':
+              return date.toLocaleDateString()
+            case 'long':
+              return date.toLocaleString()
+            case 'iso':
+              return date.toISOString()
+          }
+        },
+      }),
+      
+      // Text utilities
+      count_words: tool({
+        description: 'Count words in a text string',
+        args: {
+          text: tool.schema.string().describe('Text to analyze'),
+        },
+        async execute(args) {
+          const words = args.text.trim().split(/\s+/).length
+          const chars = args.text.length
+          const lines = args.text.split('\n').length
+          
+          return JSON.stringify({ words, chars, lines }, null, 2)
+        },
+      }),
+      
+      // Math utilities
+      calculate: tool({
+        description: 'Evaluate a mathematical expression',
+        args: {
+          expression: tool.schema.string().describe('Math expression (e.g., "2 + 2 * 3")'),
+        },
+        async execute(args) {
+          try {
+            // Simple eval for demo - use a proper math parser in production
+            const result = eval(args.expression)
+            return String(result)
+          } catch (error) {
+            return `Error: Invalid expression`
+          }
+        },
+      }),
+      
+      // JSON utilities
+      validate_json: tool({
+        description: 'Validate and format JSON',
+        args: {
+          json: tool.schema.string().describe('JSON string to validate'),
+        },
+        async execute(args) {
+          try {
+            const parsed = JSON.parse(args.json)
+            return JSON.stringify({ valid: true, formatted: JSON.stringify(parsed, null, 2) })
+          } catch (error) {
+            return JSON.stringify({ valid: false, error: error.message })
+          }
+        },
+      }),
+    },
+  }
+}
+```
+
+## Publishing Plugins
+
+Publish your plugin as an npm package:
+
+**package.json**:
+```json
+{
+  "name": "@yourname/opencode-plugin-example",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": "*"
+  }
+}
+```
+
+Users can then install and use your plugin:
+
+```bash
+npm install @yourname/opencode-plugin-example
+```
+
+```json
+{
+  "plugin": ["@yourname/opencode-plugin-example"]
+}
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Plugin API" icon="book" href="/sdk/plugin-api">
+    Complete plugin API reference
+  </Card>
+  <Card title="Plugin Tools" icon="wrench" href="/sdk/plugin-tools">
+    Tool creation guide
+  </Card>
+</CardGroup>

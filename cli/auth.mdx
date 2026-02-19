@@ -1,0 +1,462 @@
+---
+title: "auth"
+description: "Manage provider credentials and login"
+---
+
+## Overview
+
+The `auth` command manages authentication credentials for AI model providers. OpenCode uses [models.dev](https://models.dev) provider list, allowing you to use API keys from any supported provider.
+
+Credentials are stored in `~/.local/share/opencode/auth.json` and loaded automatically when OpenCode starts.
+
+## Usage
+
+```bash
+opencode auth [command]
+```
+
+## Subcommands
+
+<CardGroup cols={2}>
+  <Card title="login" icon="right-to-bracket">
+    Add credentials for a provider
+  </Card>
+  <Card title="list" icon="list">
+    Show all authenticated providers
+  </Card>
+  <Card title="logout" icon="right-from-bracket">
+    Remove credentials for a provider
+  </Card>
+</CardGroup>
+
+---
+
+## login
+
+Authenticate with a provider by storing API credentials.
+
+### Usage
+
+```bash
+opencode auth login [url]
+```
+
+### Interactive Flow
+
+When run without arguments, the command guides you through authentication:
+
+1. **Select provider** from the list
+2. **Enter API key** when prompted
+3. **Credentials saved** to auth file
+
+```bash
+opencode auth login
+```
+
+Example interaction:
+```
+◆ Select provider
+│ ● Anthropic (Claude Max or API key)
+│   OpenAI (ChatGPT Plus/Pro or API key)
+│   Google
+│   OpenRouter
+│   GitHub Copilot
+│   Other
+└ 
+
+◆ Enter your API key
+│ sk-ant-...
+└ 
+
+✓ Done
+```
+
+### Provider-Specific Instructions
+
+#### OpenCode
+
+Recommended for best experience:
+
+```bash
+opencode auth login
+# Select: OpenCode
+# Get API key: https://opencode.ai/auth
+```
+
+#### Anthropic
+
+For Claude models:
+
+```bash
+opencode auth login
+# Select: Anthropic
+# Get API key: https://console.anthropic.com/
+```
+
+#### OpenAI
+
+For GPT models:
+
+```bash
+opencode auth login
+# Select: OpenAI
+# Get API key: https://platform.openai.com/api-keys
+```
+
+#### GitHub Copilot
+
+Use your Copilot subscription:
+
+```bash
+opencode auth login
+# Select: GitHub Copilot
+# Follow OAuth flow
+```
+
+#### Amazon Bedrock
+
+Bedrock uses AWS credential chain:
+
+```bash
+opencode auth login
+# Select: Amazon Bedrock
+# Configure via AWS CLI or environment variables
+```
+
+Authentication priority:
+1. Bearer token (`AWS_BEARER_TOKEN_BEDROCK` or `/connect`)
+2. AWS credential chain (profile, access keys, IAM roles)
+
+Configure in `opencode.json`:
+
+```json
+{
+  "provider": {
+    "amazon-bedrock": {
+      "profile": "default",
+      "region": "us-east-1",
+      "endpoint": "https://bedrock-runtime.us-east-1.amazonaws.com"
+    }
+  }
+}
+```
+
+#### Vercel AI Gateway
+
+```bash
+opencode auth login
+# Select: Vercel
+# Get API key: https://vercel.link/ai-gateway-token
+```
+
+#### Custom Providers
+
+For providers not in the default list:
+
+```bash
+opencode auth login
+# Select: Other
+# Enter provider ID (lowercase, hyphens only)
+# Enter API key
+```
+
+Then configure the provider in `opencode.json`. See [provider documentation](/providers) for details.
+
+### URL-Based Authentication
+
+For custom authentication servers:
+
+```bash
+opencode auth login https://custom-provider.com
+```
+
+The provider must expose `/.well-known/opencode` with authentication information.
+
+---
+
+## list
+
+Display all authenticated providers.
+
+### Usage
+
+```bash
+opencode auth list
+```
+
+Alias:
+```bash
+opencode auth ls
+```
+
+### Example Output
+
+```
+Credentials ~/.local/share/opencode/auth.json
+
+◇ Anthropic (api)
+◇ OpenAI (api)
+◇ GitHub Copilot (oauth)
+◇ OpenCode (api)
+
+4 credentials
+```
+
+If environment variables are set, they're also shown:
+
+```
+Environment
+
+◇ Google (GOOGLE_GENERATIVE_AI_API_KEY)
+◇ OpenRouter (OPENROUTER_API_KEY)
+
+2 environment variables
+```
+
+### Authentication Types
+
+The command shows the authentication method:
+
+- **api**: API key authentication
+- **oauth**: OAuth-based authentication
+- **wellknown**: Custom authentication endpoint
+
+---
+
+## logout
+
+Remove stored credentials for a provider.
+
+### Usage
+
+```bash
+opencode auth logout
+```
+
+### Interactive Flow
+
+1. Shows list of authenticated providers
+2. Select provider to remove
+3. Credentials deleted from auth file
+
+```bash
+opencode auth logout
+```
+
+Example:
+```
+◆ Select provider
+│ ● Anthropic (api)
+│   OpenAI (api)
+│   GitHub Copilot (oauth)
+└ 
+
+✓ Logout successful
+```
+
+---
+
+## Credential Storage
+
+Credentials are stored in:
+
+```
+~/.local/share/opencode/auth.json
+```
+
+Format:
+
+```json
+{
+  "anthropic": {
+    "type": "api",
+    "key": "sk-ant-..."
+  },
+  "openai": {
+    "type": "api",
+    "key": "sk-..."
+  },
+  "github-copilot": {
+    "type": "oauth",
+    "access": "...",
+    "refresh": "...",
+    "expires": 1234567890
+  }
+}
+```
+
+<Warning>
+  Keep your `auth.json` file secure. It contains sensitive API keys.
+</Warning>
+
+## Environment Variables
+
+You can also provide credentials via environment variables:
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+export OPENAI_API_KEY="sk-..."
+export GOOGLE_GENERATIVE_AI_API_KEY="..."
+```
+
+Or in a `.env` file in your project:
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-...
+OPENAI_API_KEY=sk-...
+```
+
+Environment variables take precedence over stored credentials.
+
+## Authentication Priority
+
+OpenCode loads credentials in this order:
+
+1. **Environment variables** (`PROVIDER_API_KEY`)
+2. **Project `.env` file**
+3. **Stored credentials** (`~/.local/share/opencode/auth.json`)
+
+Higher priority sources override lower ones.
+
+## Provider Discovery
+
+When you run `opencode auth login`, the list of providers comes from:
+
+1. **models.dev** - Central provider registry
+2. **Plugins** - Providers registered by installed plugins
+3. **Custom config** - Providers defined in `opencode.json`
+
+Disable providers in configuration:
+
+```json
+{
+  "disabled_providers": ["openrouter", "together"]
+}
+```
+
+Or enable only specific providers:
+
+```json
+{
+  "enabled_providers": ["anthropic", "openai", "opencode"]
+}
+```
+
+## OAuth Authentication
+
+Some providers use OAuth instead of API keys:
+
+### Automatic Flow
+
+For providers with automatic OAuth:
+
+1. Select provider
+2. Browser opens to authorization page
+3. Grant permissions
+4. Tokens saved automatically
+
+### Manual Code Flow
+
+For providers requiring manual code entry:
+
+1. Select provider
+2. Open authorization URL
+3. Copy authorization code
+4. Paste code when prompted
+5. Tokens saved
+
+### Token Refresh
+
+OpenCode automatically refreshes OAuth tokens before they expire. If refresh fails:
+
+```bash
+# Re-authenticate
+opencode auth logout
+opencode auth login
+```
+
+## Plugin Authentication
+
+Plugins can register custom authentication methods. When you select a plugin-registered provider:
+
+1. Plugin's authentication flow executes
+2. May open browser, prompt for input, or use other methods
+3. Credentials saved to auth file
+
+See [plugin documentation](/plugins) for creating custom authentication.
+
+## Security Best Practices
+
+<CardGroup>
+  <Card title="Use environment variables" icon="shield">
+    For CI/CD and automated environments
+  </Card>
+  <Card title="Rotate keys regularly" icon="rotate">
+    Update API keys periodically
+  </Card>
+  <Card title="Limit key permissions" icon="lock">
+    Use least-privilege API keys when possible
+  </Card>
+  <Card title="Don't commit credentials" icon="ban">
+    Add `.env` and `auth.json` to `.gitignore`
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Authentication Failed
+
+**Problem**: Invalid API key error
+
+**Solutions**:
+- Verify key is correct (copy/paste carefully)
+- Check key has proper permissions
+- Ensure key hasn't expired
+- Try generating a new key
+
+### Provider Not Listed
+
+**Problem**: Can't find provider in list
+
+**Solutions**:
+- Run `opencode models --refresh` to update provider list
+- Select "Other" and enter provider ID manually
+- Check provider is supported on [models.dev](https://models.dev)
+- Configure custom provider in `opencode.json`
+
+### OAuth Failed
+
+**Problem**: OAuth authorization fails
+
+**Solutions**:
+- Try again (tokens may have expired)
+- Clear browser cookies for the provider
+- Check internet connectivity
+- Verify the provider supports OAuth
+
+### Environment Variables Not Working
+
+**Problem**: Environment variables not recognized
+
+**Solutions**:
+- Check variable name matches provider convention
+- Verify variables are exported: `export VARIABLE=value`
+- Confirm `.env` file is in project root
+- Run `opencode auth list` to see detected variables
+
+## Related Commands
+
+<CardGroup cols={2}>
+  <Card title="models" icon="microchip" href="/cli/models">
+    List available models from providers
+  </Card>
+  <Card title="Providers" icon="plug" href="/providers">
+    Learn about provider configuration
+  </Card>
+  <Card title="Configuration" icon="gear" href="/config">
+    Configure provider settings
+  </Card>
+  <Card title="Plugins" icon="puzzle-piece" href="/plugins">
+    Custom authentication via plugins
+  </Card>
+</CardGroup>

@@ -1,0 +1,351 @@
+---
+title: Installation
+description: Install OpenCode on any platform
+---
+
+OpenCode can be installed on macOS, Linux, and Windows using multiple package managers and installation methods.
+
+## Quick Install
+
+The fastest way to install OpenCode is using the installation script:
+
+```bash
+curl -fsSL https://opencode.ai/install | bash
+```
+
+<Note>
+This script automatically detects your platform and installs the latest version.
+</Note>
+
+## Prerequisites
+
+Before installing OpenCode, ensure you have:
+
+1. **A modern terminal emulator** for the best experience:
+   - [WezTerm](https://wezterm.org) - Cross-platform, highly recommended
+   - [Alacritty](https://alacritty.org) - Cross-platform, GPU-accelerated
+   - [Ghostty](https://ghostty.org) - Linux and macOS
+   - [Kitty](https://sw.kovidgoyal.net/kitty/) - Linux and macOS
+
+2. **API keys** for your preferred LLM providers (configured after installation)
+
+## Installation Methods
+
+<Tabs>
+  <Tab title="macOS">
+    ### Homebrew (Recommended)
+
+    Install from the OpenCode tap for the most up-to-date releases:
+
+    ```bash
+    brew install anomalyco/tap/opencode
+    ```
+
+    Or use the official Homebrew formula (updated less frequently):
+
+    ```bash
+    brew install opencode
+    ```
+
+    ### Node.js Package Managers
+
+    <CodeGroup>
+    ```bash npm
+    npm install -g opencode-ai
+    ```
+
+    ```bash pnpm
+    pnpm install -g opencode-ai
+    ```
+
+    ```bash yarn
+    yarn global add opencode-ai
+    ```
+
+    ```bash bun
+    bun install -g opencode-ai
+    ```
+    </CodeGroup>
+
+    ### Mise
+
+    ```bash
+    mise use -g github:anomalyco/opencode
+    ```
+
+    ### Nix
+
+    ```bash
+    nix run nixpkgs#opencode
+    ```
+
+    For the latest development version:
+
+    ```bash
+    nix run github:anomalyco/opencode
+    ```
+  </Tab>
+
+  <Tab title="Linux">
+    ### Homebrew
+
+    ```bash
+    brew install anomalyco/tap/opencode
+    ```
+
+    ### Arch Linux
+
+    <CodeGroup>
+    ```bash Stable
+    sudo pacman -S opencode
+    ```
+
+    ```bash AUR (Latest)
+    paru -S opencode-bin
+    ```
+    </CodeGroup>
+
+    ### Node.js Package Managers
+
+    <CodeGroup>
+    ```bash npm
+    npm install -g opencode-ai
+    ```
+
+    ```bash pnpm
+    pnpm install -g opencode-ai
+    ```
+
+    ```bash yarn
+    yarn global add opencode-ai
+    ```
+
+    ```bash bun
+    bun install -g opencode-ai
+    ```
+    </CodeGroup>
+
+    ### Mise
+
+    ```bash
+    mise use -g github:anomalyco/opencode
+    ```
+
+    ### Nix
+
+    ```bash
+    nix run nixpkgs#opencode
+    ```
+  </Tab>
+
+  <Tab title="Windows">
+    <Warning>
+    For the best experience on Windows, we recommend using [Windows Subsystem for Linux (WSL)](/windows-wsl). It provides better performance and full compatibility with OpenCode's features.
+    </Warning>
+
+    ### Chocolatey
+
+    ```bash
+    choco install opencode
+    ```
+
+    ### Scoop
+
+    ```bash
+    scoop install opencode
+    ```
+
+    ### Node.js Package Managers
+
+    <CodeGroup>
+    ```bash npm
+    npm install -g opencode-ai
+    ```
+
+    ```bash pnpm
+    pnpm install -g opencode-ai
+    ```
+
+    ```bash yarn
+    yarn global add opencode-ai
+    ```
+    </CodeGroup>
+
+    <Note>
+    Bun support on Windows is currently in progress.
+    </Note>
+
+    ### Mise
+
+    ```bash
+    mise use -g github:anomalyco/opencode
+    ```
+  </Tab>
+
+  <Tab title="Docker">
+    ### Run with Docker
+
+    ```bash
+    docker run -it --rm ghcr.io/anomalyco/opencode
+    ```
+
+    ### Mount Your Project
+
+    ```bash
+    docker run -it --rm -v $(pwd):/workspace ghcr.io/anomalyco/opencode
+    ```
+
+    <Tip>
+    Use Docker when you want an isolated environment or need to run OpenCode on a system without installing dependencies.
+    </Tip>
+  </Tab>
+</Tabs>
+
+## Desktop App (Beta)
+
+OpenCode is also available as a desktop application with a native GUI experience.
+
+### Download
+
+Download directly from the [releases page](https://github.com/anomalyco/opencode/releases) or [opencode.ai/download](https://opencode.ai/download).
+
+| Platform              | Download File                          |
+| --------------------- | -------------------------------------- |
+| macOS (Apple Silicon) | `opencode-desktop-darwin-aarch64.dmg`  |
+| macOS (Intel)         | `opencode-desktop-darwin-x64.dmg`      |
+| Windows               | `opencode-desktop-windows-x64.exe`     |
+| Linux (Debian/Ubuntu) | `opencode-desktop-linux-x64.deb`       |
+| Linux (Fedora/RHEL)   | `opencode-desktop-linux-x64.rpm`       |
+| Linux (AppImage)      | `opencode-desktop-linux-x64.AppImage`  |
+
+### Install via Package Manager
+
+<CodeGroup>
+```bash macOS (Homebrew)
+brew install --cask opencode-desktop
+```
+
+```bash Windows (Scoop)
+scoop bucket add extras
+scoop install extras/opencode-desktop
+```
+</CodeGroup>
+
+## Custom Installation Directory
+
+The installation script respects environment variables for custom installation paths:
+
+```bash
+# Custom directory
+OPENCODE_INSTALL_DIR=/usr/local/bin curl -fsSL https://opencode.ai/install | bash
+
+# XDG compliant path
+XDG_BIN_DIR=$HOME/.local/bin curl -fsSL https://opencode.ai/install | bash
+```
+
+### Priority Order
+
+1. `$OPENCODE_INSTALL_DIR` - Custom installation directory
+2. `$XDG_BIN_DIR` - XDG Base Directory Specification path
+3. `$HOME/bin` - Standard user binary directory
+4. `$HOME/.opencode/bin` - Default fallback
+
+## Manual Download
+
+Grab the binary directly from the [GitHub Releases](https://github.com/anomalyco/opencode/releases) page:
+
+1. Download the appropriate binary for your platform
+2. Extract the archive
+3. Move the binary to a directory in your `$PATH`
+4. Make it executable: `chmod +x opencode`
+
+## Verify Installation
+
+Confirm OpenCode is installed correctly:
+
+```bash
+opencode --version
+```
+
+You should see the version number printed to the console.
+
+## Upgrading
+
+<Tabs>
+  <Tab title="Homebrew">
+    ```bash
+    brew upgrade opencode
+    ```
+  </Tab>
+
+  <Tab title="npm">
+    ```bash
+    npm update -g opencode-ai
+    ```
+  </Tab>
+
+  <Tab title="Chocolatey">
+    ```bash
+    choco upgrade opencode
+    ```
+  </Tab>
+
+  <Tab title="Scoop">
+    ```bash
+    scoop update opencode
+    ```
+  </Tab>
+</Tabs>
+
+<Warning>
+Remove versions older than 0.1.x before installing or upgrading to avoid compatibility issues.
+</Warning>
+
+## Uninstalling
+
+To remove OpenCode from your system:
+
+<Tabs>
+  <Tab title="Homebrew">
+    ```bash
+    brew uninstall opencode
+    ```
+  </Tab>
+
+  <Tab title="npm">
+    ```bash
+    npm uninstall -g opencode-ai
+    ```
+  </Tab>
+
+  <Tab title="Chocolatey">
+    ```bash
+    choco uninstall opencode
+    ```
+  </Tab>
+
+  <Tab title="Scoop">
+    ```bash
+    scoop uninstall opencode
+    ```
+  </Tab>
+</Tabs>
+
+Remove configuration files:
+
+```bash
+rm -rf ~/.config/opencode
+rm -rf ~/.opencode
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Configure OpenCode and start your first session
+  </Card>
+  
+  <Card title="Configuration" icon="gear" href="/config">
+    Customize OpenCode to match your workflow
+  </Card>
+</CardGroup>
